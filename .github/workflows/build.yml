@@ -51,11 +51,13 @@ jobs:
           ./objdiff-cli report generate -o build/report.json
 
       - name: Install rclone and zip
+        if: github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get update
           sudo apt-get install -y rclone zip
 
       - name: Configure Google Drive
+        if: github.event_name == 'workflow_dispatch'
         env:
           GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
           GDRIVE_FOLDER_ID: "1DHP-CuGL_T8Am430V0gslAeGJqHvwVvR"
@@ -74,6 +76,7 @@ jobs:
           echo "RCLONE_DRIVE_ROOT_FOLDER_ID=$GDRIVE_FOLDER_ID" >> "$GITHUB_ENV"
 
       - name: Package build report
+        if: github.event_name == 'workflow_dispatch'
         run: |
           mkdir -p dist
           report="dist/build-report-${GITHUB_RUN_ID}-${GITHUB_SHA}.zip"
@@ -86,6 +89,7 @@ jobs:
           echo "BUILD_REPORT=$report" >> "$GITHUB_ENV"
 
       - name: Upload build report to Google Drive
+        if: github.event_name == 'workflow_dispatch'
         run: |
           filename="$(basename "$BUILD_REPORT")"
           rclone copyto "$BUILD_REPORT" "gdrive:build-reports/$filename" \
