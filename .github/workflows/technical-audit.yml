@@ -100,3 +100,21 @@ jobs:
           else:
               print("original_and_rebuilt_binary=DIFFERENT")
           PY
+
+      - name: Capture exact runtime hook disassembly
+        run: |
+          {
+            echo "=== main_run_frame (resident main loop) ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x80011C24 --stop-address=0x80011EF0 /build/program.elf
+            echo "=== farm_mode_tick (FARM overlay) ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800C14A0 --stop-address=0x800C19B0 /build/program.elf
+            echo "=== farm_load_hook ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800BD5A0 --stop-address=0x800BD5B0 /build/program.elf
+            echo "=== weather_frame_update_hook ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800BFEF8 --stop-address=0x800BFF08 /build/program.elf
+          } | tee /tmp/runtime-hook-disassembly.txt
+          cat /tmp/runtime-hook-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
