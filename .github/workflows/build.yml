@@ -84,7 +84,7 @@ jobs:
           if [ -f build/SLUS_011.15 ]; then files+=(build/SLUS_011.15); fi
           if [ -f build/original/disc/SYSTEM.CNF ]; then files+=(build/original/disc/SYSTEM.CNF); fi
           if [ -f build/original/disc/SLUS_011.15 ]; then files+=(build/original/disc/SLUS_011.15); fi
-          zip -j "$report" "${files[@]}"
+          zip "$report" "${files[@]}"
           unzip -t "$report"
           echo "BUILD_REPORT=$report" >> "$GITHUB_ENV"
 
