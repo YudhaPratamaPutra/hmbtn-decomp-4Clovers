@@ -1,0 +1,216 @@
+name: technical-audit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/technical-audit.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "disc/**"
+      - "src/**"
+      - "Dockerfile"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-linker-and-boot-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the PSX toolchain image
+        run: docker build -t hmbtn-build .
+
+      - name: Download and verify the original disc
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/original-disc"
+          gh release download Disc --repo "$GITHUB_REPOSITORY" \
+            --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
+          echo "41f81532a5fd70d6f79e7b5750513c35eee732d5e31ba144a1db7e90d84d97de  $RUNNER_TEMP/original-disc/disc.bin" | sha256sum -c -
+
+      - name: Build, extract original disc files, and run checks
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD":/src \
+            -v "$RUNNER_TEMP/original-disc":/disc:ro \
+            -w /src hmbtn-build \
+            bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
+
+      - name: Publish linker and boot evidence in the job summary
+        run: |
+          {
+            echo "## Original SYSTEM.CNF"
+            echo
+            echo '~~~text'
+            cat build/original/disc/SYSTEM.CNF
+            echo '~~~'
+            echo
+            echo "## Evidence file fingerprints"
+            sha256sum build/program.map build/program.ld build/program.elf build/SLUS_011.15 build/original/disc/SYSTEM.CNF
+            wc -c build/program.map build/program.ld build/program.elf build/SLUS_011.15 build/original/disc/SYSTEM.CNF
+            echo
+            echo "## Linker map: load regions, sections, and requested symbols"
+            grep -n -E 'overlay_low|overlay_high|main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook|__bss_start|__bss_end' build/program.map || true
+            echo
+            echo "## ELF symbol addresses"
+            docker run --rm -v "$PWD/build":/build hmbtn-build bash -lc \
+              "mips-linux-gnu-nm -n /build/program.elf | grep -E ' (main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook)$' || true"
+            echo
+            echo "## ELF section layout"
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -h /build/program.elf
+          } | tee /tmp/technical-audit-summary.txt
+          cat /tmp/technical-audit-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Emit complete linker map to job logs for audit retention
+        run: |
+          echo "===BEGIN_PROGRAM_MAP==="
+          cat build/program.map
+          echo "===END_PROGRAM_MAP==="
+
+      - name: Compare original and rebuilt PS-X EXE headers
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import pathlib
+          import struct
+
+          files = {
+              "original": pathlib.Path("build/original/disc/SLUS_011.15"),
+              "rebuilt": pathlib.Path("build/SLUS_011.15"),
+          }
+          fields = ("pc0", "gp0", "text_addr", "text_size", "data_addr",
+                    "data_size", "bss_addr", "bss_size", "sp_addr", "sp_size")
+          for name, path in files.items():
+              data = path.read_bytes()
+              if len(data) < 0x800 or data[:8] != b"PS-X EXE":
+                  raise SystemExit(f"{name}: invalid PS-X EXE header")
+              values = struct.unpack_from("<10I", data, 0x10)
+              print(f"=== {name} PS-X EXE ===")
+              print(f"file={path} bytes={len(data)} sha256={hashlib.sha256(data).hexdigest()}")
+              print(f"header_fields={data[0x10:0x38].hex()}")
+              for key, value in zip(fields, values):
+                  print(f"{key}=0x{value:08X}")
+          if files["original"].read_bytes() == files["rebuilt"].read_bytes():
+              print("original_and_rebuilt_binary=IDENTICAL")
+          else:
+              print("original_and_rebuilt_binary=DIFFERENT")
+          PY
+
+      - name: Capture exact runtime hook disassembly
+        run: |
+          {
+            echo "=== main_run_frame (resident main loop) ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x80011C24 --stop-address=0x80011EF0 /build/program.elf
+            echo "=== farm_mode_tick (FARM overlay) ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800C14A0 --stop-address=0x800C19B0 /build/program.elf
+            echo "=== farm_load_hook ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800BD5A0 --stop-address=0x800BD5B0 /build/program.elf
+            echo "=== weather_frame_update_hook ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800BFEF8 --stop-address=0x800BFF08 /build/program.elf
+          } | tee /tmp/runtime-hook-disassembly.txt
+          cat /tmp/runtime-hook-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Capture original executable startup sequence
+        run: |
+          docker run --rm -v "$PWD/build":/build hmbtn-build \
+            mips-linux-gnu-objdump -d --start-address=0x80011270 --stop-address=0x80011370 /build/program.elf \
+            | tee /tmp/exe-startup-disassembly.txt
+          cat /tmp/exe-startup-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Capture PSY-Q heap sizing constants
+        run: |
+          docker run --rm -v "$PWD/build":/build hmbtn-build \
+            mips-linux-gnu-objdump -s --start-address=0x8005648c --stop-address=0x80056494 /build/program.elf \
+            | tee /tmp/psyq-heap-constants.txt
+
+      - name: Capture heap and temporary-buffer instruction sequences
+        run: |
+          {
+            echo "=== InitHeap linked stub ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800425a4 --stop-address=0x800425e0 /build/program.elf
+            echo "=== startup heap argument calculation ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800112c8 --stop-address=0x80011320 /build/program.elf
+            echo "=== main_region_free_bytes ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x8001205c --stop-address=0x800120bc /build/program.elf
+            echo "=== main_region_free_start and main_get_region_base ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x80012098 --stop-address=0x800120d0 /build/program.elf
+          } | tee /tmp/heap-buffer-disassembly.txt
+          cat /tmp/heap-buffer-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install rclone and zip
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone zip
+
+      - name: Configure Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
+          GDRIVE_FOLDER_ID: "1DHP-CuGL_T8Am430V0gslAeGJqHvwVvR"
+        run: |
+          if [ -z "$GDRIVE_CONFIG" ]; then
+            echo "::error::GitHub Actions secret GDRIVE_CONFIG is not configured."
+            exit 1
+          fi
+          mkdir -p "$HOME/.config/rclone"
+          umask 077
+          printf '%s' "$GDRIVE_CONFIG" > "$HOME/.config/rclone/rclone.conf"
+          rclone listremotes | grep -Fxq 'gdrive:' || {
+            echo "::error::rclone config must define a remote named gdrive."
+            exit 1
+          }
+          echo "RCLONE_DRIVE_ROOT_FOLDER_ID=$GDRIVE_FOLDER_ID" >> "$GITHUB_ENV"
+
+      - name: Package technical audit evidence
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          mkdir -p dist
+          report="dist/technical-audit-${GITHUB_RUN_ID}-${GITHUB_SHA}.zip"
+          zip "$report" \
+            build/program.map \
+            build/program.ld \
+            build/program.elf \
+            build/SLUS_011.15 \
+            build/original/disc/SLUS_011.15 \
+            build/original/disc/SYSTEM.CNF \
+            /tmp/technical-audit-summary.txt \
+            /tmp/runtime-hook-disassembly.txt \
+            /tmp/exe-startup-disassembly.txt \
+            /tmp/psyq-heap-constants.txt \
+            /tmp/heap-buffer-disassembly.txt
+          unzip -t "$report"
+          echo "AUDIT_REPORT=$report" >> "$GITHUB_ENV"
+
+      - name: Upload technical audit report to Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          filename="$(basename "$AUDIT_REPORT")"
+          rclone copyto "$AUDIT_REPORT" "gdrive:technical-audit/$filename" \
+            --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
+            --verbose
+          file_id="$(rclone lsjson "gdrive:technical-audit/$filename" \
+            --stat --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" | \
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])')"
+          test -n "$file_id"
+          download_url="https://drive.google.com/uc?export=download&id=$file_id"
+          {
+            echo "## Technical audit report"
+            echo
+            echo "[Download $filename from Google Drive]($download_url)"
+            echo
+            echo "Commit: `$GITHUB_SHA`"
+          } >> "$GITHUB_STEP_SUMMARY"
