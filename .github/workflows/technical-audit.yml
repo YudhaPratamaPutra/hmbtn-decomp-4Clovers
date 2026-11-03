@@ -180,7 +180,7 @@ jobs:
         run: |
           mkdir -p dist
           report="dist/technical-audit-${GITHUB_RUN_ID}-${GITHUB_SHA}.zip"
-          zip -j "$report" \
+          zip "$report" \
             build/program.map \
             build/program.ld \
             build/program.elf \
