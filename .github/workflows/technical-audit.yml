@@ -125,3 +125,8 @@ jobs:
             mips-linux-gnu-objdump -d --start-address=0x80011270 --stop-address=0x80011370 /build/program.elf \
             | tee /tmp/exe-startup-disassembly.txt
           cat /tmp/exe-startup-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Capture PSY-Q heap sizing constants
+        run: |
+          docker run --rm -v "$PWD/build":/build hmbtn-build \
+            mips-linux-gnu-objdump -s --start-address=0x8005648c --stop-address=0x80056494 /build/program.elf
