@@ -1,0 +1,54 @@
+name: technical-audit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/technical-audit.yml"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "disc/**"
+      - "src/**"
+      - "Dockerfile"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture-linker-and-boot-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the PSX toolchain image
+        run: docker build -t hmbtn-build .
+
+      - name: Download and verify the original disc
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/original-disc"
+          gh release download Disc --repo "$GITHUB_REPOSITORY" \
+            --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
+          echo "41f81532a5fd70d6f79e7b5750513c35eee732d5e31ba144a1db7e90d84d97de  $RUNNER_TEMP/original-disc/disc.bin" | sha256sum -c -
+
+      - name: Build, extract original disc files, and run checks
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD":/src \
+            -v "$RUNNER_TEMP/original-disc":/disc:ro \
+            -w /src hmbtn-build \
+            bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
+
+      - name: Upload linker map and original boot configuration
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmbtn-bootstrap-evidence-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/program.map
+            build/program.ld
+            build/program.elf
+            build/SLUS_011.15
+            build/original/disc/SYSTEM.CNF
