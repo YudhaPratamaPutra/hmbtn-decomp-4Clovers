@@ -100,3 +100,23 @@ jobs:
             gdrive:harvest-moon-modified-rom.zip \
             --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
             --verbose
+
+      - name: Publish Google Drive download link
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          file_id="$(rclone lsjson gdrive:harvest-moon-modified-rom.zip \
+            --stat --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" |
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])')"
+          if [ -z "$file_id" ]; then
+            echo "::error::Could not retrieve the uploaded Google Drive file ID."
+            exit 1
+          fi
+          download_url="https://drive.google.com/uc?export=download&id=$file_id"
+          {
+            echo "## Modified ROM"
+            echo
+            echo "[Download harvest-moon-modified-rom.zip from Google Drive]($download_url)"
+            echo
+            echo "The ZIP is stored in the configured Google Drive folder."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Google Drive download::The download link is available in the workflow summary."
