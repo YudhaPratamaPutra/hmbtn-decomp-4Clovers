@@ -1,5 +1,5 @@
-# Build the 14 code binaries on pushes and pull requests. Manual runs also fetch the
-# original disc image from the Disc release and build/check the full disc.
+# Build the 14 code binaries on pull requests. Manual runs also fetch the
+# original disc image, build/check the full disc, and replace the Google Drive build.
 name: build
 
 on:
@@ -41,18 +41,7 @@ jobs:
           -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
           bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
 
-      - name: Upload ROM
-        uses: actions/upload-artifact@v4
-        with:
-          name: harvest-moon-modified-rom
-          path: |
-            build/disc.bin
-            build/disc.cue
-          if-no-files-found: error
-          retention-days: 7
-          
-
-      - name: Progress report
+      - name: Generate progress report
         run: |
           curl -fsSL -o objdiff-cli \
               https://github.com/encounter/objdiff/releases/download/v3.8.2/objdiff-cli-linux-x86_64
@@ -61,9 +50,36 @@ jobs:
           python3 tools/objdiff_config.py build > objdiff.json
           ./objdiff-cli report generate -o build/report.json
 
-      - name: Upload the report
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
-        with:
-          name: SLUS_011.15_report
-          path: build/report.json
+      # GDRIVE_CONFIG must contain a complete rclone config with a remote named "gdrive".
+      # rclone sync replaces the destination contents, including deleting stale remote files.
+      - name: Install rclone
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+
+      - name: Configure Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
+        run: |
+          if [ -z "$GDRIVE_CONFIG" ]; then
+            echo "::error::GitHub Actions secret GDRIVE_CONFIG is not configured."
+            exit 1
+          fi
+          mkdir -p "$HOME/.config/rclone"
+          umask 077
+          printf '%s' "$GDRIVE_CONFIG" > "$HOME/.config/rclone/rclone.conf"
+          rclone listremotes | grep -Fxq 'gdrive:' || {
+            echo "::error::rclone config must define a remote named gdrive."
+            exit 1
+          }
+
+      - name: Replace Google Drive build contents
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          test -d build
+          rclone sync build gdrive:HMBTN-Builds \
+            --create-empty-src-dirs \
+            --fast-list \
+            --verbose
