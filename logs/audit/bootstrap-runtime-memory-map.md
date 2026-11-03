@@ -16,7 +16,14 @@ Artefak linker di runner:
 - `build/SLUS_011.15`: 323.584 byte, SHA-256 `34e3b35dcd3fb1cd9a7d4813b8a9ef987915826e3d436f1908ecbe2d4fdf1444`
 - `build/original/disc/SYSTEM.CNF`: 69 byte, SHA-256 `a35823aeec31790d68e384429a5582300c73ec2ee822e7cf64cb29ec1c799ef2`
 
-GitHub menolak unggahan artifact pada run pertama karena kuota penyimpanan artifact repository penuh. Tidak ada artifact lama yang dihapus. Run kedua menerbitkan bukti penting melalui log dan ringkasan Actions. File `program.map` mentah belum tersedia sebagai unduhan; hash, ukuran, alamat simbol, dan layout ELF sudah direkam di atas dan pada log run audit.
+GitHub menolak unggahan artifact pada run pertama karena kuota penyimpanan artifact repository penuh. Tidak ada artifact lama yang dihapus. Untuk menghindari kuota artifact, workflow audit berikutnya mencetak seluruh map ke job log. Peta lengkap kemudian dipulihkan dari log run [41706697213](https://github.com/YudhaPratamaPutra/hmbtn-decomp-4Clovers/actions/runs/41706697213) dan disimpan di repository sebagai [`logs/audit/program.map`](program.map).
+
+Verifikasi file yang tersimpan:
+- ukuran: 303.484 byte;
+- SHA-256: `c1e04157942507555e2763724b733f654b00cd3e082b405f142b045e10a29fcd`;
+- hasil round-trip setelah disimpan dan dibaca kembali: identik byte-for-byte dengan teks map dari job log.
+
+Artifact ZIP Actions tetap tidak tersedia karena kuota repository. Namun file peta lengkap kini disimpan langsung di branch audit, dan hash-nya cocok dengan fingerprint map yang dicatat pada build penuh sebelumnya.
 
 ## SYSTEM.CNF asli
 
