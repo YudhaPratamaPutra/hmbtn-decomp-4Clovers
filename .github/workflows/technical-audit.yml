@@ -130,3 +130,21 @@ jobs:
         run: |
           docker run --rm -v "$PWD/build":/build hmbtn-build \
             mips-linux-gnu-objdump -s --start-address=0x8005648c --stop-address=0x80056494 /build/program.elf
+
+      - name: Capture heap and temporary-buffer instruction sequences
+        run: |
+          {
+            echo "=== InitHeap linked stub ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800425a4 --stop-address=0x800425e0 /build/program.elf
+            echo "=== startup heap argument calculation ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x800112c8 --stop-address=0x80011320 /build/program.elf
+            echo "=== main_region_free_bytes ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x8001205c --stop-address=0x800120bc /build/program.elf
+            echo "=== main_region_free_start and main_get_region_base ==="
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -d --start-address=0x80012098 --stop-address=0x800120d0 /build/program.elf
+          } | tee /tmp/heap-buffer-disassembly.txt
+          cat /tmp/heap-buffer-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
