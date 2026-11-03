@@ -41,6 +41,21 @@ jobs:
           -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
           bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
 
+      - name: Upload linker map
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmbtn-program-map
+          path: build/program.map
+          if-no-files-found: error
+
+      - name: Upload original SYSTEM.CNF
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hmbtn-original-system-cnf
+          path: build/original/disc/SYSTEM.CNF
+          if-no-files-found: error
+
       - name: Generate progress report
         run: |
           curl -fsSL -o objdiff-cli \
