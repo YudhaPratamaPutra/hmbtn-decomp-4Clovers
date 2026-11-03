@@ -65,3 +65,9 @@ jobs:
               mips-linux-gnu-objdump -h /build/program.elf
           } | tee /tmp/technical-audit-summary.txt
           cat /tmp/technical-audit-summary.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Emit complete linker map to job logs for audit retention
+        run: |
+          echo "===BEGIN_PROGRAM_MAP==="
+          cat build/program.map
+          echo "===END_PROGRAM_MAP==="
