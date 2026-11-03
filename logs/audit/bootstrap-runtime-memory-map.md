@@ -120,6 +120,55 @@ Referensi:
 - [BIOS File Execute and Flush Cache: Load, Exec, LoadExec](https://psx-spx.consoledev.net/dev/ps1/kernelbios/file-execute-and-flush-cache/)
 - [SYSTEM.CNF and PS-X EXE format](https://psx-spx.consoledev.net/dev/ps1/cdr/cdromfileformats/executables/)
 
+
+
+## Audit lanjutan: rentang heap PSY-Q (bukti ELF)
+
+Workflow audit run [41708709984](https://github.com/YudhaPratamaPutra/hmbtn-decomp-4Clovers/actions/runs/41708709984) berhasil membaca nilai data langsung dari `program.elf`:
+
+```text
+.data 0x8005648c:
+  bytes 00 80 00 00  -> _stacksize = 0x00008000
+  bytes 00 00 80 00  -> _ramsize   = 0x00800000
+```
+
+Catatan: startup `2mbyte.o` tidak mengambil ukuran RAM dari `_ramsize` pada word kedua tersebut. Disassembly menunjukkan nilai `0x00200000` dibaca dari konstanta di dalam startup stub. Nilai ini kemudian dikurangi `_stacksize` dan alamat fisik `overlay_low` untuk menentukan ukuran heap.
+
+Input yang diberikan startup kepada `InitHeap`:
+- heap base: `0x800B7E24` (`overlay_low + 4`);
+- heap length: `0x00200000 - 0x00008000 - 0x000B7E20 = 0x001401E0`;
+- batas nominal akhir: `0x801F8004`.
+
+Karena `InitHeap` menginisialisasi heap BIOS, seluruh alamat di dalam rentang itu berpotensi dialokasikan oleh pemanggil `malloc/calloc/realloc/free`. Dokumentasi kernel PS1 menjelaskan `InitHeap` sebagai penetap rentang heap BIOS, sedangkan dokumentasi Psy-Q memisahkan tiga sistem `malloc`, `malloc2`, dan `malloc3` beserta fungsi inisialisasinya. Rujukan: [PS1 BIOS memory allocation](https://psx-spx.consoledev.net/ps1/kernelbios/memory-allocation/) dan [Psy-Q Run-Time Library Overview, halaman 2-23](https://psx.arthus.net/sdk/Psy-Q/DOCS/LIBOVR46.PDF).
+
+Pemeriksaan terhadap seluruh teks `program.map` untuk simbol `malloc`, `calloc`, `realloc`, `free`, `qsort`, `InitHeap2/3`, dan `malloc2/3` hanya menemukan `InitHeap`. Ini indikasi baik bahwa binary original hanya menginisialisasi heap dan tidak menautkan konsumen alokasi yang terlihat. Namun, itu belum membuktikan semua jalur BIOS/library tidak pernah mengalokasikan memori secara tidak langsung; klaim aman tetap menunggu pemeriksaan instruksi dan uji runtime.
+
+### Contoh skema reservasi yang sedang diuji (belum diterapkan)
+
+Untuk menghindari akhir section FARM terbesar (`0x801B0620`) secara rapat, satu kandidat layout audit adalah:
+
+| Batas | Alamat |
+|---|---:|
+| Akhir section FARM terbesar | `0x801B0620` |
+| Guard | `0x9E0` |
+| Awal blok runtime kandidat | `0x801B1000` |
+| Akhir blok runtime 8 KiB | `0x801B3000` |
+| Buffer sementara baru (calon) | `0x801B3000` |
+| Awal InputDemo | `0x801BD1A8` |
+
+Jika heap dipotong tepat di `0x801B1000`, ukuran heap baru dari `0x800B7E24` adalah `0xF91DC`. Berdasarkan formula startup, nilai `_stacksize` yang menghasilkan batas tersebut adalah `0x4F004` (dibanding nilai original `0x8000`). Perhitungan ini mengubah **batas heap saja**, bukan nilai awal SP yang berasal dari konstanta 2 MiB / header PS-X EXE.
+
+Jika buffer sementara digeser dari `0x801B0620` ke `0x801B3000`, total pengurangan pada `main_region_free_bytes()` adalah `0x29E0` (guard + runtime block). Batas buffer sementara menjadi `0xB1B0` byte. Dari 451 ukuran event script yang tercatat di source, 391 akan tetap memenuhi syarat `size < main_region_free_bytes()`; 60 menggunakan jalur fallback. Saat ini 401 script memenuhi jalur asynchronous, sehingga contoh blok 8 KiB + guard mengubah jalur 10 script tambahan.
+
+Angka di atas adalah simulasi aritmetika dari ELF/map dan tabel event yang ada, bukan pilihan akhir atau uji runtime. Ukuran 8 KiB hanya contoh untuk membuktikan metode reservasi; ukuran runtime final belum ditentukan.
+
+### Dua titik patch yang harus diverifikasi sebelum implementasi
+
+1. Startup stub membaca `_stacksize`, menghitung ukuran heap, lalu memanggil `InitHeap`. Kita harus memeriksa disassembly persis dari callsite dan delay slot. Kandidat metode adalah trampoline runtime pada pemanggilan `InitHeap` yang hanya mengurangi ukuran heap; tidak boleh menggeser `.main`, BSS, `game_state`, `farm_area`, atau overlay.
+2. `main_region_free_bytes()` menentukan ukuran buffer bersama, dan `main_region_free_start()` mengembalikan awalnya. Keduanya harus diperiksa pada level instruksi sebelum memilih patch. Tujuannya hanya menggeser buffer temporary setelah blok runtime; struktur data dan buffer original tidak boleh diubah.
+
+Workflow audit berikutnya merekam disassembly `InitHeap`, startup heap-argument calculation, `main_region_free_bytes`, dan `main_region_free_start` dari ELF build yang sama. Sampai hasil itu diperiksa dan diuji, `0x801B1000` tetap kandidat, bukan alamat runtime yang disetujui.
+
 ## Batas audit ini
 
 Belum dilakukan:
