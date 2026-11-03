@@ -40,15 +40,28 @@ jobs:
             -w /src hmbtn-build \
             bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
 
-      - name: Upload linker map and original boot configuration
-        uses: actions/upload-artifact@v4
-        with:
-          name: hmbtn-bootstrap-evidence-${{ github.run_id }}
-          if-no-files-found: error
-          retention-days: 14
-          path: |
-            build/program.map
-            build/program.ld
-            build/program.elf
-            build/SLUS_011.15
-            build/original/disc/SYSTEM.CNF
+      - name: Publish linker and boot evidence in the job summary
+        run: |
+          {
+            echo "## Original SYSTEM.CNF"
+            echo
+            echo '~~~text'
+            cat build/original/disc/SYSTEM.CNF
+            echo '~~~'
+            echo
+            echo "## Evidence file fingerprints"
+            sha256sum build/program.map build/program.ld build/program.elf build/SLUS_011.15 build/original/disc/SYSTEM.CNF
+            wc -c build/program.map build/program.ld build/program.elf build/SLUS_011.15 build/original/disc/SYSTEM.CNF
+            echo
+            echo "## Linker map: load regions, sections, and requested symbols"
+            grep -n -E 'overlay_low|overlay_high|main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook|__bss_start|__bss_end' build/program.map || true
+            echo
+            echo "## ELF symbol addresses"
+            docker run --rm -v "$PWD/build":/build hmbtn-build bash -lc \
+              "mips-linux-gnu-nm -n /build/program.elf | grep -E ' (main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook)$' || true"
+            echo
+            echo "## ELF section layout"
+            docker run --rm -v "$PWD/build":/build hmbtn-build \
+              mips-linux-gnu-objdump -h /build/program.elf
+          } | tee /tmp/technical-audit-summary.txt
+          cat /tmp/technical-audit-summary.txt >> "$GITHUB_STEP_SUMMARY"
