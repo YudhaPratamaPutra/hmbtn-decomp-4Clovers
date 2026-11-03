@@ -1,5 +1,5 @@
-# Build code binaries on pull requests. Manual runs build the full disc and
-# replace the single packaged ROM ZIP in the configured Google Drive folder.
+# Build code binaries on pull requests. Manual runs build the full disc,
+# upload a separate technical report to Google Drive, and replace the ROM ZIP.
 name: build
 
 on:
@@ -51,13 +51,11 @@ jobs:
           ./objdiff-cli report generate -o build/report.json
 
       - name: Install rclone and zip
-        if: github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get update
           sudo apt-get install -y rclone zip
 
       - name: Configure Google Drive
-        if: github.event_name == 'workflow_dispatch'
         env:
           GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
           GDRIVE_FOLDER_ID: "1DHP-CuGL_T8Am430V0gslAeGJqHvwVvR"
@@ -75,6 +73,37 @@ jobs:
           }
           echo "RCLONE_DRIVE_ROOT_FOLDER_ID=$GDRIVE_FOLDER_ID" >> "$GITHUB_ENV"
 
+      - name: Package build report
+        run: |
+          mkdir -p dist
+          report="dist/build-report-${GITHUB_RUN_ID}-${GITHUB_SHA}.zip"
+          files=(build/program.map build/program.ld build/program.elf build/report.json)
+          if [ -f build/SLUS_011.15 ]; then files+=(build/SLUS_011.15); fi
+          if [ -f build/original/disc/SYSTEM.CNF ]; then files+=(build/original/disc/SYSTEM.CNF); fi
+          if [ -f build/original/disc/SLUS_011.15 ]; then files+=(build/original/disc/SLUS_011.15); fi
+          zip -j "$report" "${files[@]}"
+          unzip -t "$report"
+          echo "BUILD_REPORT=$report" >> "$GITHUB_ENV"
+
+      - name: Upload build report to Google Drive
+        run: |
+          filename="$(basename "$BUILD_REPORT")"
+          rclone copyto "$BUILD_REPORT" "gdrive:build-reports/$filename" \
+            --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
+            --verbose
+          file_id="$(rclone lsjson "gdrive:build-reports/$filename" \
+            --stat --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" | \
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])')"
+          test -n "$file_id"
+          download_url="https://drive.google.com/uc?export=download&id=$file_id"
+          {
+            echo "## Build report"
+            echo
+            echo "[Download $filename from Google Drive]($download_url)"
+            echo
+            echo "Commit: `$GITHUB_SHA`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Package modified ROM
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -91,8 +120,7 @@ jobs:
             exit 1
           fi
 
-      # copyto updates the same named Drive file; it does not sync or delete
-      # unrelated files in the destination folder.
+      # The ROM ZIP remains a separate, stable file; audit reports are versioned.
       - name: Replace ROM ZIP in Google Drive
         if: github.event_name == 'workflow_dispatch'
         run: |
