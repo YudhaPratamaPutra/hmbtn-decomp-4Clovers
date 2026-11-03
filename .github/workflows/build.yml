@@ -1,5 +1,5 @@
-# Build the 14 code binaries, check them against the original's SHA-1, and publish the
-# progress report decomp.dev reads (artifact SLUS_011.15_report). Needs no game data.
+# Build the 14 code binaries on pushes and pull requests. Manual runs also fetch the
+# original disc image from the Disc release and build/check the full disc.
 name: build
 
 on:
@@ -7,6 +7,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -17,10 +20,28 @@ jobs:
       - name: Build the image
         run: docker build -t hmbtn-build .
 
-      - name: Build and check
+      - name: Download original disc image
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/original-disc"
+          gh release download Disc --repo "$GITHUB_REPOSITORY" \
+            --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
+          echo "41f81532a5fd70d6f79e7b5750513c35eee732d5e31ba144a1db7e90d84d97de  $RUNNER_TEMP/original-disc/disc.bin" | sha256sum -c -
+
+      - name: Build and check code binaries
+        if: github.event_name != 'workflow_dispatch'
         run: >
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
           bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target check'
+
+      - name: Build and check full disc
+        if: github.event_name == 'workflow_dispatch'
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src
+          -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
+          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
 
       - name: Progress report
         run: |
