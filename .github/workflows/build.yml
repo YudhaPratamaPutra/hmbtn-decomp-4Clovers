@@ -1,5 +1,5 @@
-# Build the 14 code binaries on pull requests. Manual runs also fetch the
-# original disc image, build/check the full disc, and replace the Google Drive build.
+# Build code binaries on pull requests. Manual runs build the full disc and
+# replace the single packaged ROM ZIP in the configured Google Drive folder.
 name: build
 
 on:
@@ -50,18 +50,17 @@ jobs:
           python3 tools/objdiff_config.py build > objdiff.json
           ./objdiff-cli report generate -o build/report.json
 
-      # GDRIVE_CONFIG must contain a complete rclone config with a remote named "gdrive".
-      # rclone sync replaces the destination contents, including deleting stale remote files.
-      - name: Install rclone
+      - name: Install rclone and zip
         if: github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rclone
+          sudo apt-get install -y rclone zip
 
       - name: Configure Google Drive
         if: github.event_name == 'workflow_dispatch'
         env:
           GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
+          GDRIVE_FOLDER_ID: "1DHP-CuGL_T8Am430V0gslAeGJqHvwVvR"
         run: |
           if [ -z "$GDRIVE_CONFIG" ]; then
             echo "::error::GitHub Actions secret GDRIVE_CONFIG is not configured."
@@ -74,12 +73,30 @@ jobs:
             echo "::error::rclone config must define a remote named gdrive."
             exit 1
           }
+          echo "RCLONE_DRIVE_ROOT_FOLDER_ID=$GDRIVE_FOLDER_ID" >> "$GITHUB_ENV"
 
-      - name: Replace Google Drive build contents
+      - name: Package modified ROM
         if: github.event_name == 'workflow_dispatch'
         run: |
-          test -d build
-          rclone sync build gdrive:HMBTN-Builds \
-            --create-empty-src-dirs \
-            --fast-list \
+          test -s build/disc.bin
+          test -s build/disc.cue
+          mkdir -p dist
+          rm -f dist/harvest-moon-modified-rom.zip
+          zip -j dist/harvest-moon-modified-rom.zip build/disc.bin build/disc.cue
+          unzip -t dist/harvest-moon-modified-rom.zip
+          expected="$(printf 'disc.bin\ndisc.cue')"
+          actual="$(unzip -Z1 dist/harvest-moon-modified-rom.zip | sort)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::ZIP must contain exactly disc.bin and disc.cue."
+            exit 1
+          fi
+
+      # copyto updates the same named Drive file; it does not sync or delete
+      # unrelated files in the destination folder.
+      - name: Replace ROM ZIP in Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          rclone copyto dist/harvest-moon-modified-rom.zip \
+            gdrive:harvest-moon-modified-rom.zip \
+            --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
             --verbose
