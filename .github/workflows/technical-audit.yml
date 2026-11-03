@@ -71,3 +71,32 @@ jobs:
           echo "===BEGIN_PROGRAM_MAP==="
           cat build/program.map
           echo "===END_PROGRAM_MAP==="
+
+      - name: Compare original and rebuilt PS-X EXE headers
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import pathlib
+          import struct
+
+          files = {
+              "original": pathlib.Path("build/original/disc/SLUS_011.15"),
+              "rebuilt": pathlib.Path("build/SLUS_011.15"),
+          }
+          fields = ("pc0", "gp0", "text_addr", "text_size", "data_addr",
+                    "data_size", "bss_addr", "bss_size", "sp_addr", "sp_size")
+          for name, path in files.items():
+              data = path.read_bytes()
+              if len(data) < 0x800 or data[:8] != b"PS-X EXE":
+                  raise SystemExit(f"{name}: invalid PS-X EXE header")
+              values = struct.unpack_from("<10I", data, 0x10)
+              print(f"=== {name} PS-X EXE ===")
+              print(f"file={path} bytes={len(data)} sha256={hashlib.sha256(data).hexdigest()}")
+              print(f"header_fields={data[0x10:0x38].hex()}")
+              for key, value in zip(fields, values):
+                  print(f"{key}=0x{value:08X}")
+          if files["original"].read_bytes() == files["rebuilt"].read_bytes():
+              print("original_and_rebuilt_binary=IDENTICAL")
+          else:
+              print("original_and_rebuilt_binary=DIFFERENT")
+          PY
