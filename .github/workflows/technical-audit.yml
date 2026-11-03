@@ -129,7 +129,8 @@ jobs:
       - name: Capture PSY-Q heap sizing constants
         run: |
           docker run --rm -v "$PWD/build":/build hmbtn-build \
-            mips-linux-gnu-objdump -s --start-address=0x8005648c --stop-address=0x80056494 /build/program.elf
+            mips-linux-gnu-objdump -s --start-address=0x8005648c --stop-address=0x80056494 /build/program.elf \
+            | tee /tmp/psyq-heap-constants.txt
 
       - name: Capture heap and temporary-buffer instruction sequences
         run: |
@@ -148,3 +149,64 @@ jobs:
               mips-linux-gnu-objdump -d --start-address=0x80012098 --stop-address=0x800120d0 /build/program.elf
           } | tee /tmp/heap-buffer-disassembly.txt
           cat /tmp/heap-buffer-disassembly.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install rclone and zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone zip
+
+      - name: Configure Google Drive
+        env:
+          GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
+          GDRIVE_FOLDER_ID: "1DHP-CuGL_T8Am430V0gslAeGJqHvwVvR"
+        run: |
+          if [ -z "$GDRIVE_CONFIG" ]; then
+            echo "::error::GitHub Actions secret GDRIVE_CONFIG is not configured."
+            exit 1
+          fi
+          mkdir -p "$HOME/.config/rclone"
+          umask 077
+          printf '%s' "$GDRIVE_CONFIG" > "$HOME/.config/rclone/rclone.conf"
+          rclone listremotes | grep -Fxq 'gdrive:' || {
+            echo "::error::rclone config must define a remote named gdrive."
+            exit 1
+          }
+          echo "RCLONE_DRIVE_ROOT_FOLDER_ID=$GDRIVE_FOLDER_ID" >> "$GITHUB_ENV"
+
+      - name: Package technical audit evidence
+        run: |
+          mkdir -p dist
+          report="dist/technical-audit-${GITHUB_RUN_ID}-${GITHUB_SHA}.zip"
+          zip -j "$report" \
+            build/program.map \
+            build/program.ld \
+            build/program.elf \
+            build/SLUS_011.15 \
+            build/original/disc/SLUS_011.15 \
+            build/original/disc/SYSTEM.CNF \
+            /tmp/technical-audit-summary.txt \
+            /tmp/runtime-hook-disassembly.txt \
+            /tmp/exe-startup-disassembly.txt \
+            /tmp/psyq-heap-constants.txt \
+            /tmp/heap-buffer-disassembly.txt
+          unzip -t "$report"
+          echo "AUDIT_REPORT=$report" >> "$GITHUB_ENV"
+
+      - name: Upload technical audit report to Google Drive
+        run: |
+          filename="$(basename "$AUDIT_REPORT")"
+          rclone copyto "$AUDIT_REPORT" "gdrive:technical-audit/$filename" \
+            --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
+            --verbose
+          file_id="$(rclone lsjson "gdrive:technical-audit/$filename" \
+            --stat --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" | \
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])')"
+          test -n "$file_id"
+          download_url="https://drive.google.com/uc?export=download&id=$file_id"
+          {
+            echo "## Technical audit report"
+            echo
+            echo "[Download $filename from Google Drive]($download_url)"
+            echo
+            echo "Commit: `$GITHUB_SHA`"
+          } >> "$GITHUB_STEP_SUMMARY"
