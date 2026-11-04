@@ -41,7 +41,7 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Extracting the game's data from ${ORIGINAL_DISC}"
     VERBATIM)
-# Keep the extracted original members untouched and apply translations only to this copy.
+# Keep the extracted original members untouched; translations are applied to a separate copy.
 set(translation_csvs
     ${CMAKE_SOURCE_DIR}/translations/messege0_translation_template.csv
     ${CMAKE_SOURCE_DIR}/translations/messege1_translation_template.csv
@@ -76,8 +76,8 @@ endforeach()
 add_custom_command(
     OUTPUT ${afile_bin} ${afile_hdt}
     COMMAND ${Python3_EXECUTABLE} tools/afile.py pack --members ${members}
-        --original ${original}/A_FILE --built ${CMAKE_BINARY_DIR} --bin ${afile_bin} --hdt ${afile_hdt}
-    DEPENDS ${original}.stamp ${members} ${built} ${CMAKE_SOURCE_DIR}/tools/afile.py
+        --original ${translated_original} --built ${CMAKE_BINARY_DIR} --bin ${afile_bin} --hdt ${afile_hdt}
+    DEPENDS ${translation_stamp} ${members} ${built} ${CMAKE_SOURCE_DIR}/tools/afile.py
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Packing A_FILE"
     VERBATIM)
