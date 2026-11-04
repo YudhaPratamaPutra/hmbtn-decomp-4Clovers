@@ -11,5 +11,6 @@
 void storage_ransel_swap_begin(void);
 void storage_ransel_swap_tick(void);
 void farm_ransel_unpause(void);
+s32 item_ransel_class_word_negative(s16 item);
 
 #endif /* STORAGE_RANSEL_SWAP_H */
