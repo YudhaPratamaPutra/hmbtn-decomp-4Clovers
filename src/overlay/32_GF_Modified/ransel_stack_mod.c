@@ -303,7 +303,7 @@ static void storage_swap_screen(void) {
 static void storage_item_message(FarmStoredItem *item) {
     s32 message = item->id;
     if (message == ITEM_GIFT) {
-        message = stored_item_contents(item) + GIFT_TEXT_BASE;
+        message = stored_ransel_item_contents(item) + GIFT_TEXT_BASE;
     }
     menu_request_open(3, message);
     if (menu_get_phase() == TEXT_WINDOW_CLOSED) {
@@ -342,7 +342,7 @@ static s32 storage_swap_spots(s32 from, s32 to) {
 static s32 storage_move_item(FarmStoredItem *item, s32 spot, FarmStoredItem *other, s32 otherSpot) {
     switch (storage_spot_is_held(otherSpot)) {
     case 0:
-        if (item_class_word_negative(item->id) == 0) {
+        if (item_ransel_class_word_negative(item->id) == 0) {
             return 1;
         }
     case 1:
@@ -357,21 +357,21 @@ static s32 storage_move_item(FarmStoredItem *item, s32 spot, FarmStoredItem *oth
 static s32 storage_try_swap(FarmStoredItem *first, s32 firstSpot, FarmStoredItem *second, s32 secondSpot) {
     switch (storage_spot_is_held(secondSpot)) {
     case 0:
-        if (item_class_word_negative(first->id) == 0) {
+        if (item_ransel_class_word_negative(first->id) == 0) {
             return 1;
         }
     case 1:
-        if (item_category(first->id) == ITEM_CATEGORY_CROP && first->count >= 2) {
+        if (item_ransel_category(first->id) == ITEM_CATEGORY_CROP && first->count >= 2) {
             return 1;
         }
     }
     switch (storage_spot_is_held(firstSpot)) {
     case 0:
-        if (item_class_word_negative(second->id) == 0) {
+        if (item_ransel_class_word_negative(second->id) == 0) {
             return 1;
         }
     case 1:
-        if (item_category(second->id) == ITEM_CATEGORY_CROP && second->count >= 2) {
+        if (item_ransel_category(second->id) == ITEM_CATEGORY_CROP && second->count >= 2) {
             return 1;
         }
         storage_item_swap(first, second);
@@ -385,7 +385,7 @@ static s32 storage_try_swap(FarmStoredItem *first, s32 firstSpot, FarmStoredItem
  * Returns 1 for item kinds that the refrigerator does not stack (tools/unique items).
  */
 static s32 storage_stack_items(FarmStoredItem *item, s32 spot, FarmStoredItem *other, s32 otherSpot) {
-    s32 category = item_category(item->id);
+    s32 category = item_ransel_category(item->id);
 
     if (item->id == 0 || item->id != other->id) {
         return 1;
@@ -415,7 +415,7 @@ static void storage_stack_count(FarmStoredItem *from, FarmStoredItem *to) {
         to->count = STACK_MAX;
         from->count = sum - STACK_MAX;
     } else {
-        picture_cell_place_item(from);
+        picture_cell_place_ransel_item(from);
     }
 }
 
@@ -442,11 +442,11 @@ static void storage_draw_spot(u_long *ot, s32 index, FarmStoredItem *item) {
         item_empty_marker_draw(ot, storage_spots[index].x, storage_spots[index].y);
         return;
     }
-    picture_cell_build_prim(item->id, 0, ot, storage_spots[index].x, storage_spots[index].y, PICTURE_CELL_CENTER);
+    picture_cell_ransel_build_prim(item->id, 0, ot, storage_spots[index].x, storage_spots[index].y, PICTURE_CELL_CENTER);
     if (item->count > 1 &&
-        item_category(item->id) >= ITEM_CATEGORY_CROP &&
-        item_category(item->id) <= ITEM_CATEGORY_OBJECT &&
-        item_category(item->id) != ITEM_CATEGORY_TOOL) {
+        item_ransel_category(item->id) >= ITEM_CATEGORY_CROP &&
+        item_ransel_category(item->id) <= ITEM_CATEGORY_OBJECT &&
+        item_ransel_category(item->id) != ITEM_CATEGORY_TOOL) {
         item_anim_draw(&current_frame->otTags[0][SWAP_LAYER_COUNTS], storage_spots[index].x,
                       storage_spots[index].y, item->count);
     }
