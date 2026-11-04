@@ -313,6 +313,7 @@ void storage_ransel_swap_tick(void) {
     text_set_palette(3);
     storage_swap_screen();
     text_set_palette(saved_mode);
+    /* PLAYER_FLAG_REFRESH_HELD refreshes carry state after the screen exits. */
 }
 
 /* The spots of the swap screen: each one's position, then where the cursor goes from it.
