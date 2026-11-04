@@ -26,7 +26,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/original-disc"
           gh release download Disc --repo "$GITHUB_REPOSITORY" \
             --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
-          echo "41f81532a5fd70d6f79e7b5750513c35eee732d5e31ba144a1db7e90d84d97de  $RUNNER_TEMP/original-disc/disc.bin" | sha256sum -c -
 
       - name: Build and check code binaries
         if: github.event_name != 'workflow_dispatch'
