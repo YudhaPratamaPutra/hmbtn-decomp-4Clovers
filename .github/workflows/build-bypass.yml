@@ -1,6 +1,6 @@
 # Build code binaries on pull requests. Manual runs build the full disc and
 # replace the single packaged ROM ZIP in the configured Google Drive folder.
-name: build
+name: build-bypass
 
 on:
   pull_request:
