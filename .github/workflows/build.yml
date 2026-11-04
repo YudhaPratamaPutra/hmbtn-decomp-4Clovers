@@ -15,8 +15,10 @@ jobs:
       - name: Build the image
         run: docker build -t hmbtn-build .
 
-      - name: Download
-        run: >
+      - name: Download original disc image
+        env:
+         GH_TOKEN: ${{ github.token }}
+        run: |
           mkdir -p "$RUNNER_TEMP/original-disc"
           gh release download Disc --repo "$GITHUB_REPOSITORY" \
           --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
