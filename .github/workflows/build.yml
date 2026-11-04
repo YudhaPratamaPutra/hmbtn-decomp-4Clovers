@@ -25,9 +25,9 @@ jobs:
 
       - name: Build and check
         run: >
-          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
-          bash -c 'cmake -S . -B build -G Ninja
-          DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target disc'
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src
+          -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
+          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target disc'
           
       - name: Upload ROM
         uses: actions/upload-artifact@v4
