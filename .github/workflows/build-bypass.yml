@@ -4,8 +4,6 @@ name: build-bypass
 
 on:
   workflow_dispatch:
-  push:
-
 concurrency:
   group: build-bypass-${{ github.ref }}
   cancel-in-progress: true
