@@ -1,5 +1,5 @@
-#ifndef STORAGE_SWAP_H
-#define STORAGE_SWAP_H
+#ifndef STORAGE_RANSEL_SWAP_H
+#define STORAGE_RANSEL_SWAP_H
 
 /* Swapping items between the stores and the player. */
 
@@ -8,8 +8,8 @@
 #include <libgpu.h>
 #include <libgs.h>
 
-void storage_swap_begin(void);
-void storage_swap_tick(void);
+void storage_ransel_swap_begin(void);
+void storage_ransel_swap_tick(void);
 
 
-#endif /* STORAGE_SWAP_H */
+#endif /* STORAGE_RANSEL_SWAP_H */
