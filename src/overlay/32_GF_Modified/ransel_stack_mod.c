@@ -1,6 +1,6 @@
 /* Rucksack mod: replacement implementation of the stock item-swap screen.
  * Based on menu/storage_swap.c; only stacking eligibility and count display differ.
- * The original source file remains unchanged and is not compiled for this overlay.
+ * The original source files remains unchanged and is not compiled for this overlay.
  */
 
 #include <sys/types.h>
@@ -8,7 +8,6 @@
 #include <libgpu.h>
 #include <libgs.h>
 #include "types.h"
-#include "farm_main.h"
 #include "farm_state.h"
 #include "farm_tables.h"
 #include "item_storage.h"
