@@ -1,6 +1,3 @@
-/* The farm item storage screens (tools, rucksack, cabinet and icebox) and the
- * pictures of the items shown on them. */
-
 #include <sys/types.h>
 #include <libgte.h>
 #include <libgpu.h>
@@ -869,9 +866,6 @@ static s32 item_merge_pair(FarmStoredItem *first, s32 first_arg, FarmStoredItem 
         }
         /* fall through */
     case ITEM_SLOT_HELD:
-        if (item_category(first->id) == ITEM_CATEGORY_CROP && first->count >= 2) {
-            return 0;
-        }
         break;
     }
 
@@ -894,9 +888,6 @@ static s32 item_merge_pair(FarmStoredItem *first, s32 first_arg, FarmStoredItem 
         }
         /* fall through */
     case ITEM_SLOT_HELD:
-        if (item_category(second->id) == ITEM_CATEGORY_CROP && second->count >= 2) {
-            return 0;
-        }
         item_merge_categories(first, first_arg, second, second_arg, 1);
         item_swap(first, second);
         return 1;
@@ -910,14 +901,11 @@ static s32 item_merge_values(FarmStoredItem *item, s32 first_col, FarmStoredItem
     switch (item_slot_category(second_col)) {
     case 0:
     case 1:
-        if (item_category(item->id) != ITEM_CATEGORY_SEED) {
+        if (item_category(item->id) == ITEM_CATEGORY_TOOL) {
             return 0;
         }
         /* fall through */
     case ITEM_SLOT_GRID:
-        if (item_category(item->id) == ITEM_CATEGORY_TOOL) {
-            return 0;
-        }
         item_stack_merge(item, target);
         return 1;
     default:
@@ -1113,19 +1101,9 @@ static void item_marker_draw(u_long *ot, s32 index, FarmStoredItem *item) {
     } else {
         item_entry_refresh(ot, item->id, item_markers[index].x, item_markers[index].y);
     }
-    switch (item_category(item->id)) {
-    case ITEM_CATEGORY_TOOL:
-        break;
-    case ITEM_CATEGORY_SEED:
+    if (item_category(item->id) != ITEM_CATEGORY_TOOL) {
         item_anim_draw(&current_frame->otTags[0][22], item_markers[index].x,
                       item_markers[index].y, item->count);
-        break;
-    case ITEM_CATEGORY_CROP:
-        if (item_slot_category(index) == ITEM_SLOT_GRID) {
-            item_anim_draw(&current_frame->otTags[0][22], item_markers[index].x,
-                          item_markers[index].y, item->count);
-        }
-        break;
     }
 }
 
