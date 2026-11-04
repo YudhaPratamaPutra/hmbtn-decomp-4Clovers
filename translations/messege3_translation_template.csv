@@ -9197,17 +9197,15 @@ Sampai jumpa minggu depan!",BELUM
 Chicken Lil’s <G:008A> <PAGE_BREAK><PAGE_END>
 <NO_SCROLL>North village <G:0089>
 Chicken Lil’s <G:008A>
-<G:0087> <INSERT:400D> Farm",Desa Utara
-Peternakan
-Chicken Lil’s
-
-Desa Utara
-Peternakan
-Chicken Lil’s
-
-Desa Utara
-Chicken Lil’s
-Peternakan,BELUM
+<G:0087> <INSERT:400D> Farm",Desa UtaraDesa Utara <G:0089>
+<G:0087> Peternakan <INSERT:400D>
+<G:008A> Chicken Lil’s <PAGE_BREAK><PAGE_END>
+<NO_SCROLL>Desa Utara <G:0089>
+<G:0087> Peternakan <INSERT:400D>
+Chicken Lil’s <G:008A> <PAGE_BREAK><PAGE_END>
+<NO_SCROLL>Desa Utara <G:0089>
+Chicken Lil’s <G:008A>
+<G:0087> <INSERT:400D> Peternakan,BELUM
 0x207,0x40F800,40,"<G:0FEF><FACE_BANK><FACE_SHOW><FACE_RELOAD><WAIT:0>OK. I<G:0052>l send it to your
 farm later.","Baik. Nanti akan kukirim ke
 peternakanmu.",BELUM
@@ -18816,7 +18814,8 @@ Kehidupan di Ladang",BELUM
 I’m Mayor Thomas.<PAGE_BREAK><PAGE_END>
 <FACE><FACE_BANK><FACE_SHOW>I’m going to ask you a number
 of questions, so please answer
-them.","Selamat datang di Mineral Town.
+them.","Selamat datang di Mineral Town.Selamat datang di
+Mineral Town.
 Aku Wali Kota Thomas.
 
 Aku akan mengajukan beberapa
@@ -22370,47 +22369,33 @@ the tree. But none of the
 trees had any nuts, and the
 king lost his way and never
 came out.
-The woodcutter was saved.","Penebang Kayu dan Sang Raja
-Pada zaman dahulu, hiduplah
-seorang penebang kayu di
-sebuah negeri kecil.
-Suatu hari, dia dipanggil
-menghadap sang raja.
-Raja memerintahkannya mencari
-kacang langka yang konon
-bisa memperpanjang umur.
-Akhirnya, penebang kayu itu
-menemukan kacang tersebut
-di puncak pohon tinggi
-di tengah hutan.
-Saat hendak menebang pohon,
+The woodcutter was saved.","Penebang Kayu dan Sang RajaPenebang Kayu dan Raja
+Dahulu seorang penebang kayu
+tinggal di negeri kecil.
+Suatu hari raja memanggilnya.
+Raja menyuruhnya mencari
+kacang ajaib pemanjang umur.
+Akhirnya ia menemukannya
+di puncak pohon tinggi.
+Saat hendak menebang pohon
 tiba-tiba terdengar suara.
-Pohon itu memohon,
-""Tolong, jangan tebang aku.""
-Penebang kayu merasa iba
-dan memutuskan membiarkannya
-tetap berdiri.
-Sebagai rasa terima kasih,
-pohon itu memberinya kacang
-langka tersebut.
-Dia belum pernah melihat
-kacang dengan warna seperti
-itu.
-Namun, dia tetap membawanya
-untuk diserahkan kepada raja.
-Raja kemudian memerintahkan
-penebang kayu menebang pohon
-itu dan membawanya ke istana.
-Namun, penebang kayu menolak.
-Murka, raja memenjarakannya.
-Raja lalu pergi sendiri untuk
-menebang pohon tersebut.
-Namun, tak satu pun pohon
-memiliki kacang.
-Raja tersesat di hutan dan
-tidak pernah kembali.
-Sementara itu, penebang kayu
-akhirnya dibebaskan.",BELUM
+Pohon itu memohon
+Jangan tebang aku!
+Ia iba dan membiarkannya.
+Pohon memberinya kacang
+sebagai tanda terima kasih.
+Belum pernah ia melihat
+kacang seindah itu.
+Ia pun menyerahkannya
+kepada sang raja.
+Raja menyuruhnya menebang
+pohon itu dan membawanya
+ke istana tetapi ia menolak.
+Murka raja memenjarakannya
+lalu pergi menebang pohon.
+Namun tak ada kacang di sana.
+Raja tersesat dan tak kembali.
+Penebang kayu pun dibebaskan.",BELUM
 0x4ED,0x9DB800,128,"<NO_SCROLL>Something wrapped up as
 a gift.
 What’s inside is a<G:007F>
