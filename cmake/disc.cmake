@@ -25,6 +25,8 @@ set(layout ${CMAKE_SOURCE_DIR}/disc/disc.xml)
 set(members ${CMAKE_SOURCE_DIR}/disc/a_file.txt)
 set(afile_bin ${CMAKE_BINARY_DIR}/A_FILE.BIN)
 set(afile_hdt ${CMAKE_BINARY_DIR}/A_FILE.HDT)
+set(translated_original ${CMAKE_BINARY_DIR}/translated_A_FILE)
+set(translation_stamp ${CMAKE_BINARY_DIR}/translations.stamp)
 
 # The original's files (original/disc/) and A_FILE's members (original/A_FILE/).
 add_custom_command(
