@@ -15,7 +15,6 @@
 #include "math_util.h"
 #include "menu_window.h"
 #include "pad.h"
-#include "picture_cells.h"
 #include "player.h"
 #include "prim.h"
 #include "sound_request.h"
