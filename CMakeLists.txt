@@ -61,13 +61,13 @@ psx_program()
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).
 include(cmake/disc.cmake)
 
-# Every build ends by comparing every binary, and with ORIGINAL_DISC A_FILE and the
-# disc, against the original's SHA-1, and fails on a mismatch (also runnable alone as
-# `--target check`).
+# Every build checks the 14 code binaries against the original's SHA-1. A_FILE and the
+# disc are intentionally excluded: their contents change when translations are applied.
+# The `afile` and `disc` targets still have explicit build dependencies (also runnable
+# alone as `--target check`).
 set(check_lists ${CMAKE_SOURCE_DIR}/disc/binaries.sha1)
 set(check_targets program)
 if(ORIGINAL_DISC)
-    list(APPEND check_lists ${CMAKE_SOURCE_DIR}/disc/disc.sha1)
     list(APPEND check_targets afile disc)
 endif()
 add_custom_target(check ALL
