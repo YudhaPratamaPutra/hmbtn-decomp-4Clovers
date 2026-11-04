@@ -567,11 +567,10 @@ of chicken feed<G:007F>",Gudang pakan ayam sudah penuh!,BELUM
 0x04D,0x09B800,99,"<NO_SCROLL>D button: Change Quantity
 (R/L by 1s, Up/Down by 10s)
 × button: Buy item
-○ button: Cancel purchase","Tombol arah: Ubah jumlah
-Kiri/Kanan: tambah 1
-Atas/Bawah: tambah 10
-× : Beli barang
-○ : Batalkan pembelian",BELUM
+○ button: Cancel purchase","Arah: ubah jumlah
+Kiri/Kanan: +1
+Atas/Bawah: +10
+×: Beli; ○: Batal",BELUM
 0x04E,0x09D800,41,"<G:0F7E><FACE_BANK><FACE_SHOW><FACE_RELOAD><WAIT:0>Heh<G:007F>you’re not going to buy
 anything?","Heh, jadi kau tidak mau
 membeli apa pun?",BELUM
