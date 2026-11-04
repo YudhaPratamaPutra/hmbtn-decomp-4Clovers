@@ -23,6 +23,11 @@ jobs:
           gh release download Disc --repo "$GITHUB_REPOSITORY" \
           --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
 
+      - name: Build and check
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
+          bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target disc'
+          
       - name: Upload ROM
         uses: actions/upload-artifact@v4
         with:
