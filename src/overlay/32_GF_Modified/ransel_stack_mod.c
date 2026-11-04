@@ -130,7 +130,7 @@ void storage_ransel_swap_tick(void) {
         }
         menu_reset();
         storage_swap_state = SWAP_IDLE;
-        farm_unpause();
+        farm_ransel_unpause();
         game_state.globalFlags |= GLOBAL_FLAG_TRANSITION_END;
         game_state.player.stateFlags |= PLAYER_FLAG_REFRESH_HELD;
         return;
