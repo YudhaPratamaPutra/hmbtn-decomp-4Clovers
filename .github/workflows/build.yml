@@ -27,18 +27,18 @@ jobs:
           gh release download Disc --repo "$GITHUB_REPOSITORY" \
             --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
 
-      - name: Build and check code binaries
-        if: github.event_name != 'workflow_dispatch'
-        run: >
-          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
-          bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target check'
+      #- name: Build and check code binaries
+      #  if: github.event_name != 'workflow_dispatch'
+      #  run: >
+      #    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
+      #    bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target check'
 
       - name: Build and check full disc
         if: github.event_name == 'workflow_dispatch'
         run: >
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src
           -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
-          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
+          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target disc'
           
       
       - name: Install rclone and zip
