@@ -1,4 +1,5 @@
 # 11_GF_FARM, an overlay (11_GF_FARM.bin in A_FILE). The source list is in link order.
+# Source asli di src/ tidak diubah; unit pengganti diletakkan di Modifikasi/.
 
 psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
     SOURCES
@@ -28,9 +29,9 @@ psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
         event/cue_history.c
         estate.c
         menu/menus.c
-        menu/item_storage.c
+        Modifikasi/item_stack_mod.c
         menu/calendar.c
-        menu/storage_swap.c
+        Modifikasi/ransel_stack_mod.c
         menu/status_pages.c
         menu/options_menu.c
         menu/house.c
