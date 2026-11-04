@@ -214,6 +214,65 @@ void picture_cell_ransel_build_prim(s16 key, s16 part, u_long *object,
                                              gs_work_alloc(0), u, v, flags));
 }
 
+/* Local equivalents of the small item-storage helpers used by this overlay. */
+void farm_ransel_unpause(void) {
+    game_state.globalFlags &= ~(GLOBAL_FLAG_PAUSED | GLOBAL_FLAG_MENU_OPEN);
+    game_state.player.latches |= PLAYER_LATCH_UNPAUSE;
+}
+
+void picture_cell_place_ransel_item(FarmStoredItem *item) {
+    item->id = 0;
+    item->modifier = 0;
+    item->count = 0;
+}
+
+s32 item_ransel_class_word_negative(s16 item) {
+    s32 flags = game_state.itemInfo[item].classFlags.word;
+    return flags < (item ^ item);
+}
+
+s8 item_ransel_category(s16 item) {
+    return game_state.itemInfo[item].category;
+}
+
+s16 stored_ransel_item_contents(FarmStoredItem *item) {
+    if (item->id == ITEM_GIFT) {
+        return item->modifier;
+    }
+    return 0;
+}
+
+/* Local copies of the original storage-screen animation helpers. */
+static void item_ransel_anim_draw(u_long *ot, s16 posX, s16 posY, s32 value) {
+    s16 x;
+    s16 y;
+    s32 count;
+    AnimState *sprite;
+
+    x = posX + 2;
+    y = posY + 22;
+    count = value / 10;
+    sprite = &ui_icon_anim;
+    anim_select_range(sprite, 0xA);
+    anim_set_frame(sprite, 0xA);
+    anim_draw_sprt_cursor(ot, sprite, sprite->animation, sprite->frame, x, y);
+    x += 10;
+    if (count != 0) {
+        anim_set_frame(sprite, count & 0xFF);
+        anim_draw_sprt_cursor(ot, sprite, sprite->animation, sprite->frame, x, y);
+    }
+    x += 10;
+    anim_set_frame(sprite, (value - count * 10) & 0xFF);
+    anim_draw_sprt_cursor(ot, sprite, sprite->animation, sprite->frame, x, y);
+}
+
+static void item_ransel_effect_submit(u_long *ot, s16 posX, s16 posY) {
+    anim_select_range(&ui_icon_anim, 0xB);
+    anim_set_frame(&ui_icon_anim, 0);
+    anim_draw_ft4_cursor(ot, &ui_icon_anim, ui_icon_anim.animation,
+                         ui_icon_anim.frame, posX, posY, 0x1000, 0, 0);
+}
+
 static void storage_swap_reset(void) {
     storage_swap_state = SWAP_IDLE;
     storage_swap_cursor = 0;
@@ -254,7 +313,6 @@ void storage_ransel_swap_tick(void) {
     text_set_palette(3);
     storage_swap_screen();
     text_set_palette(saved_mode);
-    player_refresh_carry_state(&game_state.player);
 }
 
 /* The spots of the swap screen: each one's position, then where the cursor goes from it.
@@ -335,7 +393,7 @@ static void storage_swap_screen(void) {
     }
     if (storage_swap_marked != SPOT_NONE) {
         dir = SPOT_LINKS_MARKED;
-        item_effect_submit(&current_frame->otTags[0][SWAP_LAYER_MARK],
+        item_ransel_effect_submit(&current_frame->otTags[0][SWAP_LAYER_MARK],
                       storage_spots[storage_swap_marked].x,
                       storage_spots[storage_swap_marked].y);
     } else {
@@ -555,7 +613,7 @@ static FarmStoredItem *storage_spot_item(s32 spot) {
  * picture_cell_build_prim and draw its count when it stacks. */
 static void storage_draw_spot(u_long *ot, s32 index, FarmStoredItem *item) {
     if (item->id == 0) {
-        item_empty_marker_draw(ot, storage_spots[index].x, storage_spots[index].y);
+        picture_cell_ransel_empty_marker_draw(ot, storage_spots[index].x, storage_spots[index].y);
         return;
     }
     picture_cell_ransel_build_prim(item->id, 0, ot, storage_spots[index].x, storage_spots[index].y, PICTURE_CELL_CENTER);
@@ -563,7 +621,7 @@ static void storage_draw_spot(u_long *ot, s32 index, FarmStoredItem *item) {
         item_ransel_category(item->id) >= ITEM_CATEGORY_CROP &&
         item_ransel_category(item->id) <= ITEM_CATEGORY_OBJECT &&
         item_ransel_category(item->id) != ITEM_CATEGORY_TOOL) {
-        item_anim_draw(&current_frame->otTags[0][SWAP_LAYER_COUNTS], storage_spots[index].x,
+        item_ransel_anim_draw(&current_frame->otTags[0][SWAP_LAYER_COUNTS], storage_spots[index].x,
                       storage_spots[index].y, item->count);
     }
 }
