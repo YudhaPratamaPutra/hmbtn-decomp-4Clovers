@@ -9197,7 +9197,7 @@ Sampai jumpa minggu depan!",BELUM
 Chicken Lil’s <G:008A> <PAGE_BREAK><PAGE_END>
 <NO_SCROLL>North village <G:0089>
 Chicken Lil’s <G:008A>
-<G:0087> <INSERT:400D> Farm",Desa Utara"Desa Utara <G:0089>
+<G:0087> <INSERT:400D> Farm","Desa Utara <G:0089>
 <G:0087> Peternakan <INSERT:400D>
 <G:008A> Chicken Lil’s <PAGE_BREAK><PAGE_END>
 <NO_SCROLL>Desa Utara <G:0089>
@@ -18814,7 +18814,7 @@ Kehidupan di Ladang",BELUM
 I’m Mayor Thomas.<PAGE_BREAK><PAGE_END>
 <FACE><FACE_BANK><FACE_SHOW>I’m going to ask you a number
 of questions, so please answer
-them.","Selamat datang di Mineral Town.Selamat datang di
+them.","Selamat datang di
 Mineral Town.
 Aku Wali Kota Thomas.
 
@@ -22369,7 +22369,7 @@ the tree. But none of the
 trees had any nuts, and the
 king lost his way and never
 came out.
-The woodcutter was saved.","Penebang Kayu dan Sang RajaPenebang Kayu dan Raja
+The woodcutter was saved.","Penebang Kayu dan Raja
 Dahulu seorang penebang kayu
 tinggal di negeri kecil.
 Suatu hari raja memanggilnya.
