@@ -20,7 +20,6 @@
 #include "player.h"
 #include "prim.h"
 #include "sound_request.h"
-#include "storage_swap.h"
 #include "text.h"
 #include "text_bank.h"
 #include "ui_icons.h"
