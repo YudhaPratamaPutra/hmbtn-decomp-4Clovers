@@ -10,6 +10,7 @@
 #include "types.h"
 #include "farm_state.h"
 #include "farm_tables.h"
+#include "compiled_out.h"
 #include "item_storage.h"
 #include "main.h"
 #include "math_util.h"
@@ -96,6 +97,122 @@ static s32 storage_swap_cursor = 0;
 static s32 storage_swap_pick = 0;
 
 static s32 storage_swap_marked = SPOT_NONE;
+
+#define RANSEL_PICTURE_CELL_SIZE 32
+#define RANSEL_PICTURE_CLUT_RESERVED_X 1008
+#define RANSEL_PICTURE_TPAGE_RESERVED 0x3C0
+#define RANSEL_PICTURE_TPAGE_PLAIN 0x340
+
+/* Draw the same empty-cell marker used by the original item picture renderer. */
+static void picture_cell_ransel_empty_marker_draw(u_long *ot, s16 x, s16 y) {
+    anim_select_range(&ui_icon_anim, 11);
+    anim_set_frame(&ui_icon_anim, 2);
+    anim_draw_sprt_cursor(ot, &ui_icon_anim, ui_icon_anim.animation, ui_icon_anim.frame, x, y);
+}
+
+/* Build one item-picture sprite and its texture-page packet using the original
+ * FarmGridEntry data. This implementation is local to overlay 32. */
+static void *picture_cell_ransel_draw(s16 column, s16 row, s16 part, u_long *ot,
+                                      SPRT *sprite, s32 x, s32 y, s32 flags) {
+    FarmGridEntry *picture;
+    DR_MODE *mode;
+    s16 px;
+    s16 py;
+    s16 u;
+    s16 v;
+    s16 w;
+    s16 h;
+    u32 tpageX;
+
+    px = x;
+    py = y;
+    picture = &farm_area.mode.pictureEntries[row][column];
+    setSprt(sprite);
+    sprite->clut = getClut(picture->clutX, picture->clutY);
+    setRGB0(sprite, 0x80, 0x80, 0x80);
+    setShadeTex(sprite, 0);
+    if (part != 0) {
+        u = picture->x2;
+        v = picture->y2;
+        w = picture->w2;
+        h = picture->h2;
+        if (flags & PICTURE_CELL_BIT1) {
+            px += picture->offset[1][0];
+            py += picture->offset[1][1];
+        }
+    } else {
+        u = picture->x;
+        v = picture->y;
+        w = picture->w;
+        h = picture->h;
+        if (flags & PICTURE_CELL_BIT1) {
+            px += picture->offset[0][0];
+            py += picture->offset[0][1];
+        }
+    }
+    sprite->x0 = px;
+    sprite->y0 = py;
+    sprite->w = w;
+    sprite->h = h;
+    sprite->u0 = u * 4;
+    sprite->v0 = v;
+    AddPrim(ot, sprite);
+    sprite++;
+    mode = (DR_MODE *)sprite;
+    FARM_DEBUG_CHECK();
+    tpageX = RANSEL_PICTURE_TPAGE_PLAIN;
+    if (picture->clutX >= RANSEL_PICTURE_CLUT_RESERVED_X) {
+        tpageX = RANSEL_PICTURE_TPAGE_RESERVED;
+    }
+    setlen(mode, 1);
+    mode->code[0] = 0xE1000600 | (tpageX >> 6);
+    AddPrim(ot, mode);
+    return mode + 1;
+}
+
+void picture_cell_ransel_build_prim(s16 key, s16 part, u_long *object,
+                                    s16 u, s16 v, s32 flags) {
+    s32 row;
+    u32 column;
+    s16 *row0;
+    s16 *row1;
+
+    row = -1;
+    row0 = farm_area.mode.pictureIds[0];
+    row1 = farm_area.mode.pictureIds[1];
+    column = 0;
+    while (column < PICTURE_SLOTS) {
+        if (*row0 == key) {
+            row = 0;
+            break;
+        }
+        if (*row1 == key) {
+            row = 1;
+            break;
+        }
+        column++;
+        row0++;
+        row1++;
+    }
+    if (row == -1) {
+        return;
+    }
+
+    if (flags & (PICTURE_CELL_BIT0 | PICTURE_CELL_HALF_SHIFT | PICTURE_CELL_CENTER)) {
+        picture_cell_ransel_empty_marker_draw(&object[1], u, v);
+    }
+    if (flags & PICTURE_CELL_CENTER) {
+        u += (RANSEL_PICTURE_CELL_SIZE - farm_area.mode.pictureEntries[row][column].w) / 2;
+        v += (RANSEL_PICTURE_CELL_SIZE - farm_area.mode.pictureEntries[row][column].h) / 2;
+    }
+    if (flags & PICTURE_CELL_HALF_SHIFT) {
+        u += 16;
+        v += 16;
+        flags |= PICTURE_CELL_BIT1;
+    }
+    gs_work_release(picture_cell_ransel_draw(column, row, part, object,
+                                             gs_work_alloc(0), u, v, flags));
+}
 
 static void storage_swap_reset(void) {
     storage_swap_state = SWAP_IDLE;
