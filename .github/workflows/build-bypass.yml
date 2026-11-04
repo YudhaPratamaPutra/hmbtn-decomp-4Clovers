@@ -3,8 +3,12 @@
 name: build-bypass
 
 on:
-  pull_request:
   workflow_dispatch:
+  push:
+
+concurrency:
+  group: build-bypass-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
