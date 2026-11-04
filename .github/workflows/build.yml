@@ -40,31 +40,8 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src
           -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
           bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target check'
-
-      - name: Upload linker map
-        uses: actions/upload-artifact@v4
-        with:
-          name: hmbtn-program-map
-          path: build/program.map
-          if-no-files-found: error
-
-      - name: Upload original SYSTEM.CNF
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
-        with:
-          name: hmbtn-original-system-cnf
-          path: build/original/disc/SYSTEM.CNF
-          if-no-files-found: error
-
-      - name: Generate progress report
-        run: |
-          curl -fsSL -o objdiff-cli \
-              https://github.com/encounter/objdiff/releases/download/v3.8.2/objdiff-cli-linux-x86_64
-          echo "e5445089a6f707e30cb5e02992451b604619cedfd2660ee2373a86bfefd9e718  objdiff-cli" | sha256sum -c -
-          chmod +x objdiff-cli
-          python3 tools/objdiff_config.py build > objdiff.json
-          ./objdiff-cli report generate -o build/report.json
-
+          
+      
       - name: Install rclone and zip
         if: github.event_name == 'workflow_dispatch'
         run: |
