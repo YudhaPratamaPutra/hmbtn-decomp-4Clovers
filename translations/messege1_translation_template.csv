@@ -11664,11 +11664,10 @@ Wahahahaha!",BELUM
 0x764,0xEC9800,89,"<NO_SCROLL>D button: Move/Change Quantity
 × button:Select
 ○ button:Cancel
-Start:Quit buying tickets","Tombol arah: Gerak/Ubah jumlah
+Start:Quit buying tickets","Tombol arah: Ubah jumlah
 ×: Pilih
 ○: Batal
-Start: Keluar dari pembelian
-tiket",BELUM
+Start: Batal beli tiket",BELUM
 0x765,0xECB800,508,"<G:0F74><FACE_BANK><FACE_SHOW><FACE_RELOAD><G:0F7C><WAIT:5><G:007F><G:007F><G:007F><G:007F><PAGE_BREAK><PAGE_END>
 <G:0F7C><FACE_BANK><FACE_SHOW><FACE_RELOAD><G:0F74><WAIT:0>Oh, h-h-hi <INSERT:400A>!
 Actually, I’m just about to get
