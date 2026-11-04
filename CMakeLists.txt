@@ -21,7 +21,7 @@ set(PSX_INCLUDE_DIRS
     src/overlay/08_DEBUG src/overlay/10_PdaSamp src/overlay/15_saveload
     src/overlay/17_GF_MG1 src/overlay/19_GF_MG2 src/overlay/21_GF_MG3 src/overlay/23_GF_MG4
     src/overlay/25_GF_MG5 src/overlay/27_GF_TITLE src/overlay/28_GF_STAFF src/overlay/30_GF_swind
-    src/overlay/31_gf_mcard src/overlay/32_GF_Modified
+    src/overlay/31_gf_mcard
     src)
 list(TRANSFORM PSX_INCLUDE_DIRS PREPEND -I OUTPUT_VARIABLE psx_include_flags)
 set(PSX_CPP_FLAGS ${psx_include_flags} -I${PSYQ_INCLUDE_DIR} -D_LANGUAGE_C -D__CHAR_UNSIGNED__)

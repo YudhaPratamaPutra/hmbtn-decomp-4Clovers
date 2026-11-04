@@ -30,7 +30,7 @@ psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
         menu/menus.c
         menu/item_storage.c
         menu/calendar.c
-        ../32_GF_Modified/ransel_stack_mod.c
+        ransel_stack_mod.c
         menu/status_pages.c
         menu/options_menu.c
         menu/house.c

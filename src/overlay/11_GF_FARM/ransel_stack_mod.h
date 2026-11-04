@@ -1,4 +1,4 @@
-#ifndef STORAGE_RANSEL_SWAP_H
+#ifndef RANSEL_STACK_MOD_H
 #define STORAGE_RANSEL_SWAP_H
 
 /* Swapping items between the stores and the player. */
