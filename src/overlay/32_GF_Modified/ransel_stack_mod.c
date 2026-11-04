@@ -24,7 +24,7 @@
 #include "text.h"
 #include "text_bank.h"
 #include "ui_icons.h"
-include "ransel_stack_mod.h"
+#include "ransel_stack_mod.h"
 
 /* A frame rectangle. */
 typedef struct FarmFrameRect {
