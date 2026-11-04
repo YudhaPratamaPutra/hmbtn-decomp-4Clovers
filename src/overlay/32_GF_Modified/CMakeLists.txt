@@ -2,9 +2,9 @@
 
 psx_overlay(32_GF_Modified FILE 32_GF_Modified.bin REGION low OWN_COMMONS
     SOURCES
-    item_stack_mod.c
-    ransel_stack_mod.c
+       item_stack_mod.c
+       ransel_stack_mod.c
     
     # Filler the linker leaves in the alignment gap after a file's .data,
     # which no object holds.
-    #Gap
+    #GAP menu/house.c .data 0x33 0x32
