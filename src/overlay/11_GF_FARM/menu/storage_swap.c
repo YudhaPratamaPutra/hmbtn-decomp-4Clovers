@@ -1,25 +1,3 @@
-#include <sys/types.h>
-#include <libgte.h>
-#include <libgpu.h>
-#include <libgs.h>
-#include "types.h"
-#include "farm_main.h"
-#include "farm_state.h"
-#include "farm_tables.h"
-#include "item_storage.h"
-#include "main.h"
-#include "math_util.h"
-#include "menu_window.h"
-#include "pad.h"
-#include "picture_cells.h"
-#include "player.h"
-#include "prim.h"
-#include "sound_request.h"
-#include "storage_swap.h"
-#include "text.h"
-#include "text_bank.h"
-#include "ui_icons.h"
-
 /* A frame rectangle. */
 typedef struct FarmFrameRect {
     s16 x;
@@ -376,10 +354,10 @@ static s32 storage_try_swap(FarmStoredItem *first, s32 firstSpot, FarmStoredItem
     return 1;
 }
 
-/* Stack a seed onto the same kind in `other`. Other kinds are refused (return 1). */
+/* Stack any stackable item onto the same kind in `other`. Only tools are refused (return 1). */
 static s32 storage_stack_items(FarmStoredItem *item, s32 spot, FarmStoredItem *other, s32 otherSpot) {
     s32 result;
-    if (item_category(item->id) == ITEM_CATEGORY_SEED) {
+    if (item_category(item->id) != ITEM_CATEGORY_TOOL) {
         storage_stack_count(item, other);
         result = 0;
     } else {
@@ -432,7 +410,7 @@ static void storage_draw_spot(u_long *ot, s32 index, FarmStoredItem *item) {
         return;
     }
     picture_cell_build_prim(item->id, 0, ot, storage_spots[index].x, storage_spots[index].y, PICTURE_CELL_CENTER);
-    if (item_category(item->id) == 2) {
+    if (item_category(item->id) != ITEM_CATEGORY_TOOL) {
         item_anim_draw(&current_frame->otTags[0][SWAP_LAYER_COUNTS], storage_spots[index].x,
                       storage_spots[index].y, item->count);
     }
