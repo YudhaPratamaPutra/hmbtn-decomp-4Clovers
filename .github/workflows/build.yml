@@ -22,6 +22,16 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
           bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target check'
 
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: harvest-moon-modified-rom
+          path: |
+            build/disc.bin
+            build/disc.cue
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Progress report
         run: |
           curl -fsSL -o objdiff-cli \
