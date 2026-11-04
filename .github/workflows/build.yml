@@ -15,12 +15,11 @@ jobs:
       - name: Build the image
         run: docker build -t hmbtn-build .
 
-      - name: Build and check
+      - name: Download
         run: >
-          docker build -t hmbtn-build .
-          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src:ro -v /tmp/hmbtn-build:/build \
-          -v /path/to/disc:/disc:ro hmbtn-build bash -c 'cmake -S /src -B /build -G Ninja \
-          -DORIGINAL_DISC=/disc/disc.bin && cmake --build /build --target check'
+          mkdir -p "$RUNNER_TEMP/original-disc"
+          gh release download Disc --repo "$GITHUB_REPOSITORY" \
+          --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
 
       - name: Upload ROM
         uses: actions/upload-artifact@v4
