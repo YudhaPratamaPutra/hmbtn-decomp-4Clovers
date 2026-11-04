@@ -56,7 +56,6 @@ add_subdirectory(src/overlay/27_GF_TITLE)
 add_subdirectory(src/overlay/28_GF_STAFF)
 add_subdirectory(src/overlay/30_GF_swind)
 add_subdirectory(src/overlay/31_gf_mcard)
-add_subdirectory(src/overlay/32_GF_Modified)
 psx_program()
 
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).

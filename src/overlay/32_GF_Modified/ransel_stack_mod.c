@@ -111,7 +111,7 @@ static void picture_cell_ransel_empty_marker_draw(u_long *ot, s16 x, s16 y) {
 }
 
 /* Build one item-picture sprite and its texture-page packet using the original
- * FarmGridEntry data. This implementation is local to overlay 32. */
+ * FarmGridEntry data. This implementation is compiled into overlay 11. */
 static void *picture_cell_ransel_draw(s16 column, s16 row, s16 part, u_long *ot,
                                       SPRT *sprite, s32 x, s32 y, s32 flags) {
     FarmGridEntry *picture;
@@ -281,7 +281,7 @@ static void storage_swap_reset(void) {
 }
 
 /* Open the spot-swap screen from idle. */
-void storage_ransel_swap_begin(void) {
+void storage_swap_begin(void) {
     if (storage_swap_state == SWAP_IDLE) {
         storage_swap_reset();
         storage_swap_state = SWAP_BROWSE;
@@ -291,7 +291,7 @@ void storage_ransel_swap_begin(void) {
 
 /* Per-frame tick: shade the screen and draw the spot-swap screen while it is open. When
  * it is leaving, wait for the menu window to close, then return the player to play. */
-void storage_ransel_swap_tick(void) {
+void storage_swap_tick(void) {
     s32 saved_mode;
 
     if (storage_swap_state == SWAP_IDLE) {

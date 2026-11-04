@@ -8,8 +8,8 @@
 #include <libgpu.h>
 #include <libgs.h>
 
-void storage_ransel_swap_begin(void);
-void storage_ransel_swap_tick(void);
+void storage_swap_begin(void);
+void storage_swap_tick(void);
 void farm_ransel_unpause(void);
 void picture_cell_place_ransel_item(FarmStoredItem *item);
 void picture_cell_ransel_build_prim(s16 key, s16 part, u_long *object, s16 u, s16 v, s32 flags);
