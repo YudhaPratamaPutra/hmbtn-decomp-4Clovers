@@ -53,25 +53,30 @@ jobs:
             sha256sum build/program.map build/program.ld build/program.elf build/SLUS_011.15 build/original/disc/SYSTEM.CNF
             wc -c build/program.map build/program.ld build/program.elf build/SLUS_011.15 build/original/disc/SYSTEM.CNF
             echo
-            echo "## Linker map: load regions, sections, and requested symbols"
-            grep -n -E 'overlay_low|overlay_high|11_GF_FARM|32_GF_Modified|storage_swap_begin|storage_swap_tick|main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook|__bss_start|__bss_end' build/program.map || true
+            echo "## Linker map: FARM section and rucksack symbols"
+            grep -n -E 'overlay_low|overlay_high|11_GF_FARM|storage_swap_begin|storage_swap_tick|main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook|__bss_start|__bss_end' build/program.map || true
             echo
             echo "## ELF symbol addresses"
             docker run --rm -v "$PWD/build":/build hmbtn-build bash -lc \
-              "mips-linux-gnu-nm -n /build/program.elf | grep -E ' (storage_swap_begin|storage_swap_tick|main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook)"
+              "mips-linux-gnu-nm -n /build/program.elf | grep -E ' (storage_swap_begin|storage_swap_tick|main_region_free_bytes|main_region_free_start|main_get_region_base|main_run_frame|farm_state_init|farm_load_hook|farm_mode_tick|weather_frame_update_hook)$' || true"
             echo
             echo "## ELF section layout"
-            docker run --rm -v "$PWD/build":/build hmbtn-build \
-              mips-linux-gnu-objdump -h /build/program.elf
+            docker run --rm -v "$PWD/build":/build hmbtn-build mips-linux-gnu-objdump -h /build/program.elf
             echo
             echo "## FARM overlay binary size and symbol checks"
             test -s build/11_GF_FARM.bin
             test ! -e build/32_GF_Modified.bin
             wc -c build/11_GF_FARM.bin
             sha1sum build/11_GF_FARM.bin
-            symbol_lines="$(docker run --rm -v \"$PWD/build\":/build hmbtn-build mips-linux-gnu-nm -n /build/program.elf | grep -E ' [Tt] (storage_swap_begin|storage_swap_tick)          } | tee /tmp/technical-audit-summary.txt
+            symbol_lines="$(docker run --rm -v "$PWD/build":/build hmbtn-build mips-linux-gnu-nm -n /build/program.elf | grep -E ' [Tt] (storage_swap_begin|storage_swap_tick)$')"
+            printf '%s\n' "$symbol_lines"
+            test "$(printf '%s\n' "$symbol_lines" | wc -l)" -eq 2
+            echo
+            echo "## SHA-1 checks for all unchanged original binaries"
+            awk '$2 != "11_GF_FARM.bin" { print }' disc/binaries.sha1 > /tmp/unchanged-binaries.sha1
+            cmake -DLISTS=/tmp/unchanged-binaries.sha1 -DDIR=build -P cmake/check_sha1.cmake
+          } | tee /tmp/technical-audit-summary.txt
           cat /tmp/technical-audit-summary.txt >> "$GITHUB_STEP_SUMMARY"
-
       - name: Emit complete linker map to job logs for audit retention
         run: |
           echo "===BEGIN_PROGRAM_MAP==="
