@@ -41,6 +41,30 @@ add_custom_command(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Extracting the game's data from ${ORIGINAL_DISC}"
     VERBATIM)
+# Keep the extracted original members untouched and apply translations only to this copy.
+set(translation_csvs
+    ${CMAKE_SOURCE_DIR}/translations/messege0_translation_template.csv
+    ${CMAKE_SOURCE_DIR}/translations/messege1_translation_template.csv
+    ${CMAKE_SOURCE_DIR}/translations/messege2_translation_template.csv
+    ${CMAKE_SOURCE_DIR}/translations/messege3_translation_template.csv
+    ${CMAKE_SOURCE_DIR}/translations/messege4_translation_template.csv
+)
+add_custom_command(
+    OUTPUT ${translation_stamp}
+    COMMAND ${CMAKE_COMMAND} -E rm -rf ${translated_original}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${original}/A_FILE ${translated_original}
+    COMMAND ${Python3_EXECUTABLE} tools/Modifikasi/translate_messages.py
+        --all
+        --bin-dir ${translated_original}
+        --csv-dir ${CMAKE_SOURCE_DIR}/translations
+        --output-dir ${translated_original}
+        --report-json ${CMAKE_BINARY_DIR}/translations-report.json
+    COMMAND ${CMAKE_COMMAND} -E touch ${translation_stamp}
+    DEPENDS ${original}.stamp ${CMAKE_SOURCE_DIR}/tools/Modifikasi/translate_messages.py
+        ${translation_csvs}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Applying Indonesian translations to messege0..messege4"
+    VERBATIM)
 
 # A_FILE: the overlays built here, the other members the original's.
 file(STRINGS ${members} rows REGEX "^ *[0-9]+ +[^ ]+ +built ")
