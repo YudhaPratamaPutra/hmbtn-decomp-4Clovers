@@ -24,6 +24,7 @@
 #include "text.h"
 #include "text_bank.h"
 #include "ui_icons.h"
+include "ransel_stack_mod.h"
 
 /* A frame rectangle. */
 typedef struct FarmFrameRect {
@@ -107,7 +108,7 @@ static void storage_swap_reset(void) {
 }
 
 /* Open the spot-swap screen from idle. */
-void storage_swap_begin(void) {
+void storage_ransel_swap_begin(void) {
     if (storage_swap_state == SWAP_IDLE) {
         storage_swap_reset();
         storage_swap_state = SWAP_BROWSE;
@@ -117,7 +118,7 @@ void storage_swap_begin(void) {
 
 /* Per-frame tick: shade the screen and draw the spot-swap screen while it is open. When
  * it is leaving, wait for the menu window to close, then return the player to play. */
-void storage_swap_tick(void) {
+void storage_ransel_swap_tick(void) {
     s32 saved_mode;
 
     if (storage_swap_state == SWAP_IDLE) {
