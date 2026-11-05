@@ -145,7 +145,7 @@ def scan_hook_declarations(
     seen_sites: set[str] = set()
 
     for start, end, metadata in _comment_declarations(source_text):
-        allowed = {"id", "type", "site_symbol"}
+        allowed = {"id", "type", "site_symbol", "trampoline_offset"}
         extra = set(metadata) - allowed
         missing = allowed - set(metadata)
         if missing or extra:
@@ -163,7 +163,7 @@ def scan_hook_declarations(
             raise HookDeclarationError("hook declaration id must be a non-empty string")
         if not isinstance(site_symbol, str) or not _IDENTIFIER.fullmatch(site_symbol):
             raise HookDeclarationError("site_symbol must be a C/linker identifier")
-        if declaration_id in seen_ids:
+        if trampoline_offset is not None:\n            if isinstance(trampoline_offset, bool):\n                raise HookDeclarationError("trampoline_offset must be a non-negative aligned integer")\n            try:\n                trampoline_offset = int(trampoline_offset, 0) if isinstance(trampoline_offset, str) else int(trampoline_offset)\n            except (TypeError, ValueError) as exc:\n                raise HookDeclarationError("trampoline_offset must be a non-negative aligned integer") from exc\n            if trampoline_offset < 0 or trampoline_offset > 0xFFFFFFFF or trampoline_offset & 3:\n                raise HookDeclarationError("trampoline_offset must be a non-negative aligned integer")\n        if declaration_id in seen_ids:
             raise HookDeclarationError(f"duplicate hook declaration id: {declaration_id}")
         if site_symbol in seen_sites:
             raise HookDeclarationError(f"duplicate hook target declaration: {site_symbol}")
