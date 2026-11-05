@@ -82,31 +82,39 @@ def _mask_non_code(source: str) -> str:
 
 
 def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
+    """Parse actual C comments, ignoring comment-like text inside literals."""
     declarations = []
     i = 0
     while i < len(source):
-        line = source.find("//", i)
-        block = source.find("/*", i)
-        candidates = [pos for pos in (line, block) if pos >= 0]
-        if not candidates:
-            break
-        start = min(candidates)
-        if start == line:
-            end = source.find("\n", start)
-            end = len(source) if end < 0 else end
-            comment = source[start:end]
-            i = end
-        else:
-            close = source.find("*/", start + 2)
-            if close < 0:
-                raise HookDeclarationError("unterminated block comment")
-            end = close + 2
-            comment = source[start:end]
-            i = end
+        if source[i] in ('"', "'"):
+            quote = source[i]
+            i += 1
+            while i < len(source):
+                if source[i] == "\\":
+                    i += 2
+                elif source[i] == quote:
+                    i += 1
+                    break
+                else:
+                    i += 1
+            continue
+        if source.startswith("//", i):
+            end = source.find("\n", i)
+            i = len(source) if end < 0 else end
+            continue
+        if not source.startswith("/*", i):
+            i += 1
+            continue
+
+        start = i
+        close = source.find("*/", start + 2)
+        if close < 0:
+            raise HookDeclarationError("unterminated block comment")
+        end = close + 2
+        comment = source[start:end]
+        i = end
         if _MARKER not in comment:
             continue
-        if start == line:
-            raise HookDeclarationError("MIPS_AUTO_HOOK declarations must use block comments")
         if comment.count(_MARKER) != 1:
             raise HookDeclarationError("each declaration comment must contain exactly one marker")
         payload = comment.split(_MARKER, 1)[1].rsplit("*/", 1)[0].strip()
@@ -121,7 +129,6 @@ def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
             raise HookDeclarationError("hook declaration metadata must be a JSON object")
         declarations.append((start, end, metadata))
     return declarations
-
 
 def scan_hook_declarations(
     source_text: str, *, source_name: str = "<memory>"
