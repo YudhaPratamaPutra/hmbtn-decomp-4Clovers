@@ -59,11 +59,12 @@ add_subdirectory(src/overlay/31_gf_mcard)
 psx_program()
 
 
-# Add one opt-in integration pipeline for every overlay that owns a mod/ directory.
-psx_overlay_mips_integration_targets()
-
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).
 include(cmake/disc.cmake)
+
+# Register per-overlay integration targets after A_FILE exists, so packaging can
+# depend on every integration pipeline without a FARM-specific invocation.
+psx_overlay_mips_integration_targets()
 
 # Every build checks the 14 code binaries against the original's SHA-1. A_FILE and the
 # disc are intentionally excluded: their contents change when translations are applied.
