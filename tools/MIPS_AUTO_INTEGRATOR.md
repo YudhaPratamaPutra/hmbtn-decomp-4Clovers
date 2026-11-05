@@ -445,3 +445,20 @@ The dependency is created for every eligible overlay, not just FARM. There is
 no separate manual FARM target invocation. When `ORIGINAL_DISC` is not set,
 `disc.cmake` does not create `afile`; the per-overlay integration targets
 remain available as explicit build targets.
+## Stage 14 — Package Integrated Overlay Binaries into A_FILE
+
+`tools/afile.py pack` accepts an integrated-binary directory and an explicit
+member list. Only filenames listed in that manifest are read from the integrated
+directory; all other `built` members continue to come from the normal build
+directory, and `original` members continue to come from the translated original
+directory.
+
+`psx_overlay_mips_integration_targets()` writes the manifest for overlays with
+`mod/` directories. After validating each sidecar, its target copies the sidecar
+to `integrated_A_FILE/<A_FILE member filename>`. `cmake/disc.cmake` passes this
+directory and manifest to `afile.py pack`, and declares the manifest as a build
+dependency. The original linked overlay BIN is not overwritten.
+
+The packaging unit tests verify that a listed member comes from the integrated
+sidecar, unlisted built members remain sourced from the build directory, and
+original members remain sourced from the original directory.
