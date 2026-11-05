@@ -203,7 +203,7 @@ def scan_hook_declarations(
         line_number = source_text.count("\n", 0, start) + 1
         found.append(HookDeclaration(
             declaration_id, hook_symbol, site_symbol, source_name, line_number,
-            trampoline_offset
+            trampoline_symbol
         ))
     return found
 
