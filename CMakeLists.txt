@@ -79,9 +79,9 @@ add_custom_target(mips-integrate-farm
         --overlay 11_GF_FARM
         --registry ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
         --map ${CMAKE_BINARY_DIR}/program.map
-    DEPENDS program
     COMMENT "Integrating and validating FARM mod sidecar image"
     VERBATIM)
+add_dependencies(mips-integrate-farm program)
 
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).
 include(cmake/disc.cmake)
