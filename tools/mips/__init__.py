@@ -9,6 +9,10 @@ from .hook import (
     hook_plan_to_json, plan_hook_patch,
 )
 from .discovery import ModDiscoveryError, ModInventory, discover_mod_sources
+from .symbols import (
+    SymbolDefinition, SymbolResolution, SymbolResolverError,
+    load_linker_map, parse_linker_map, resolve_symbol, resolve_symbols,
+)
 
 __all__ = [
     "Instruction", "MipsDecodeError", "decode", "encode_i", "encode_j", "encode_r",
@@ -17,4 +21,6 @@ __all__ = [
     "HookEngineError", "HookPatchPlan", "plan_hook_patch",
     "apply_hook_patch", "hook_plan_to_json",
     "ModDiscoveryError", "ModInventory", "discover_mod_sources",
+    "SymbolDefinition", "SymbolResolution", "SymbolResolverError",
+    "load_linker_map", "parse_linker_map", "resolve_symbol", "resolve_symbols",
 ]
