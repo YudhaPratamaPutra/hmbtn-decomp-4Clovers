@@ -94,6 +94,73 @@ def discover_mod_sources(overlay_dir: str | Path) -> ModInventory:
     )
 
 
+@dataclass(frozen=True)
+class OverlayInventory:
+    name: str
+    path: str
+    has_mod_directory: bool
+    sources: tuple[str, ...]
+    headers: tuple[str, ...]
+    registry_path: str | None
+    registry_hooks: int | None
+
+    def to_dict(self) -> dict:
+        return {
+            "overlay": self.name,
+            "path": self.path,
+            "has_mod_directory": self.has_mod_directory,
+            "source_count": len(self.sources),
+            "sources": list(self.sources),
+            "header_count": len(self.headers),
+            "headers": list(self.headers),
+            "registry": {
+                "path": self.registry_path,
+                "hooks": self.registry_hooks,
+            } if self.registry_path is not None else None,
+        }
+
+
+def discover_overlays(overlay_root: str | Path) -> tuple[OverlayInventory, ...]:
+    """Discover immediate overlay directories from their actual CMakeLists.txt files."""
+    root = Path(overlay_root).resolve()
+    if not root.is_dir():
+        raise ModDiscoveryError(f"overlay root does not exist: {overlay_root}")
+
+    discovered = []
+    for overlay in sorted(root.iterdir(), key=lambda item: item.name):
+        if overlay.is_symlink():
+            raise ModDiscoveryError(f"symlinked overlay entry is not allowed: {overlay}")
+        if not overlay.is_dir() or not (overlay / "CMakeLists.txt").is_file():
+            continue
+
+        mod_root = overlay / "mod"
+        if mod_root.is_dir():
+            mod = discover_mod_sources(overlay)
+            sources = mod.sources
+            headers = mod.headers
+            registry_path = mod.registry_path
+            registry_hooks = mod.registry_hooks
+            has_mod = True
+        else:
+            sources = ()
+            headers = ()
+            registry_path = None
+            registry_hooks = None
+            has_mod = False
+
+        discovered.append(OverlayInventory(
+            name=overlay.name,
+            path=overlay.relative_to(root.parent).as_posix(),
+            has_mod_directory=has_mod,
+            sources=sources,
+            headers=headers,
+            registry_path=registry_path,
+            registry_hooks=registry_hooks,
+        ))
+
+    return tuple(discovered)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("overlay", type=Path, help="overlay directory containing mod/")
