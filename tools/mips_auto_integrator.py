@@ -318,7 +318,7 @@ def main() -> None:
         if args.json:
             print(json.dumps(inventory.to_dict(), indent=2))
         else:
-            print(f"[MIPS AUTO INTEGRATOR] START - {inventory.overlay}")
+            print(f"[MIPS AUTO INTEGRATOR] OVERLAY - {inventory.overlay}")
             print("[MIPS AUTO INTEGRATOR] DISCOVERY COMPLETE")
             print(f"  C sources: {len(inventory.sources)}")
             for source in inventory.sources:
