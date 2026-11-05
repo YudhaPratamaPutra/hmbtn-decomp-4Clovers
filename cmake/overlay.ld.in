@@ -6,5 +6,9 @@
 @TEXT@
 @DATA@
 @BSS@
+    . = ALIGN(., 4);
+    __mips_trampoline_start = .;
+    KEEP(*(.mips_trampoline))
+    __mips_trampoline_end = .;
     . = ALIGN(., 0x800);  /* the A_FILE member is whole sectors */
 }
