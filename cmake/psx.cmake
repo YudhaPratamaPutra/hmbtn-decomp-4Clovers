@@ -365,6 +365,9 @@ endfunction()
 # generates the registry, plans/applies patches, and validates a separate sidecar BIN.
 function(psx_overlay_mips_integration_targets)
     get_property(overlays GLOBAL PROPERTY PSX_OVERLAYS)
+    set(integrated_members_file ${CMAKE_BINARY_DIR}/integrated_a_file_members.txt)
+    file(WRITE ${integrated_members_file} "")
+    set(integrated_dir ${CMAKE_BINARY_DIR}/integrated_A_FILE)
     foreach(overlay IN LISTS overlays)
         set(overlay_dir ${CMAKE_SOURCE_DIR}/src/overlay/${overlay})
         if(NOT IS_DIRECTORY "${overlay_dir}/mod")
@@ -378,6 +381,7 @@ function(psx_overlay_mips_integration_targets)
         set(registry ${overlay_dir}/mod/hooks.json)
         set(input_image ${CMAKE_BINARY_DIR}/${overlay_file})
         set(output_image ${CMAKE_BINARY_DIR}/${overlay}.mod.bin)
+        file(APPEND ${integrated_members_file} "${overlay_file}\n")
 
         add_custom_target(mips-integrate-${overlay}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
@@ -412,6 +416,8 @@ function(psx_overlay_mips_integration_targets)
                 integrate-validate --input ${input_image} --patched ${output_image}
                 --base ${base_address} --overlay ${overlay}
                 --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${integrated_dir}
+            COMMAND ${CMAKE_COMMAND} -E copy ${output_image} ${integrated_dir}/${overlay_file}
             COMMENT "MIPS Auto Integrator: complete per-overlay pipeline for ${overlay}"
             VERBATIM)
         add_dependencies(mips-integrate-${overlay} program)
