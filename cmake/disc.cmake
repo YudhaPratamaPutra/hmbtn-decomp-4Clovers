@@ -50,13 +50,13 @@ endforeach()
 add_custom_command(
     OUTPUT ${afile_bin} ${afile_hdt}
     COMMAND ${Python3_EXECUTABLE} tools/afile.py pack --members ${members}
-        --original ${original}/A_FILE --built ${CMAKE_BINARY_DIR} --bin ${afile_bin} --hdt ${afile_hdt}
+        --original ${original}/A_FILE --built ${integrated_dir} --bin ${afile_bin} --hdt ${afile_hdt}
     DEPENDS ${original}.stamp ${members} ${built} ${CMAKE_SOURCE_DIR}/tools/afile.py
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Packing A_FILE"
     VERBATIM)
 add_custom_target(afile ALL DEPENDS ${afile_bin} ${afile_hdt})
-add_dependencies(afile program)
+add_dependencies(afile program mips-integrate-stage)
 
 # The disc: the original's layout and files, with the EXE and A_FILE built here.
 add_custom_command(
