@@ -42,7 +42,7 @@ class MipsAnalysisTests(unittest.TestCase):
         self.assertEqual(report.instructions[0]["file_offset"], "0x4")
 
     def test_rejects_unaligned_or_out_of_image_ranges(self):
-        image = b"\\0" * 8
+        image = b"\0" * 8
         with self.assertRaises(MipsAnalysisError):
             analyze_mips_image(image, 0x80010000, start_offset=2)
         with self.assertRaises(MipsAnalysisError):
