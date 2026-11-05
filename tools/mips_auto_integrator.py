@@ -206,7 +206,7 @@ def main() -> None:
         output = apply_jal_patches(image, [patch])
         args.output.write_bytes(output)
         print(json.dumps(patch.to_dict(), indent=2))
-    else:
+    elif args.cmd in ("hook-plan", "hook-apply"):
         from tools.mips.hook import apply_hook_patch, hook_plan_to_json, plan_hook_patch
         image = args.input.read_bytes()
         try:
