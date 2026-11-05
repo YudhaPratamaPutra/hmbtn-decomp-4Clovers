@@ -13,68 +13,79 @@ The reusable instruction core is in `tools/mips/core.py`. It provides:
 This is an instruction-field core, not a complete disassembler or assembler.
 COP0/COP1/COP2 operation payloads are classified, not fully decoded. COP3,
 reserved opcodes, and unimplemented SPECIAL/REGIMM encodings are rejected.
-PS1 binary reads and writes remain little-endian in the patching layer.
 
 ## Stage 2 — JAL Engine
 
-The JAL engine is in `tools/mips/jal.py` and is exposed through
-`tools/mips_auto_integrator.py`:
+The JAL engine is in `tools/mips/jal.py`:
+- Scans aligned words and resolves opcode-3 JAL destinations using the runtime
+  address supplied for byte zero of the image.
+- Supports offset-range and target filters.
+- Requires exact original instruction words and optionally the original target
+  before planning a callsite replacement.
+- Validates a complete batch before writing; duplicate offsets are rejected.
+- Returns a new image and never mutates the input.
 
-- `scan_jal(data, base_address)` scans aligned 32-bit words and resolves JAL
-  destinations using each callsite PC. The caller must supply the runtime address
-  corresponding to byte zero; no load address is guessed.
-- Optional byte-range and destination filters narrow the scan.
-- `plan_jal_patch` requires the exact original instruction word and can also
-  require the original destination before creating a patch record.
-- `apply_jal_patches` validates the complete batch before writing any bytes,
-  rejects duplicate offsets, and returns a new image without mutating the input.
-- Replacement targets must be aligned and in the same 256 MiB pseudo-direct
-  region as callsite PC+4.
+The scanner does not distinguish executable instructions from embedded data.
+The caller must constrain scanning to a verified code range. No runtime base
+address is inferred.
 
-The scanner identifies opcode-3 words in the requested range. It does not
-distinguish executable instructions from embedded data; callers must constrain
-the scan to a verified code range. This stage does not yet resolve function names
-from linker maps or apply `hooks.json` registry entries.
+## Stage 3 — HOOK Engine
 
-### CLI
+The HOOK engine is in `tools/mips/hook.py`. It plans and applies a function-entry
+hook plus its trampoline within one supplied binary image.
 
-Scan a binary (base address maps to byte zero):
+The caller must explicitly provide:
+- Site file offset and runtime PC.
+- Hook runtime PC.
+- Trampoline file offset and runtime PC.
+- The exact two original instructions at the hook site.
+- The exact 16 original bytes reserved for trampoline storage.
+
+The engine replaces 8 bytes at the site with `j hook; nop`. The trampoline
+contains the two displaced instructions followed by `j site+8; nop`. Both
+regions are revalidated immediately before application. Site and trampoline
+storage must be in-bounds, aligned, and non-overlapping. The output is a new
+image; the input is not mutated.
+
+Relocation is deliberately conservative: both displaced words must decode as
+supported MIPS-I instructions and neither may be a control transfer. Unknown or
+reserved instructions are rejected. The hook and return jumps must satisfy the
+MIPS PC+4 256 MiB pseudo-direct region rule. The engine does not search for free
+trampoline memory, infer load addresses, or prove that a supplied 16-byte area
+is unused. That proof remains the caller's responsibility.
+
+### HOOK CLI
+
+Inspect a hook plan without modifying the input:
 
 ```sh
-python3 tools/mips_auto_integrator.py jal-scan \
-  --input overlay.bin --base 0x800B7E20
+python3 tools/mips_auto_integrator.py hook-plan \
+  --input overlay.bin \
+  --site-offset 0x100 --site-pc 0x800B7F20 \
+  --hook-pc 0x80030000 \
+  --trampoline-offset 0x700 --trampoline-pc 0x800B8520 \
+  --word0 0x27BDFFE8 --word1 0xAFBF0010 \
+  --expected-trampoline CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 ```
 
-Filter by destination and/or range:
+Apply only after independently verifying both file offsets and runtime addresses:
 
 ```sh
-python3 tools/mips_auto_integrator.py jal-scan \
-  --input overlay.bin --base 0x800B7E20 \
-  --start 0x100 --end 0x4000 --target 0x800BBC34
+python3 tools/mips_auto_integrator.py hook-apply \
+  --input overlay.bin --output overlay.hooked.bin \
+  --site-offset 0x100 --site-pc 0x800B7F20 \
+  --hook-pc 0x80030000 \
+  --trampoline-offset 0x700 --trampoline-pc 0x800B8520 \
+  --word0 0x27BDFFE8 --word1 0xAFBF0010 \
+  --expected-trampoline CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 ```
 
-Patch one verified callsite into a separate output file:
+The hexadecimal trampoline guard must represent exactly 16 bytes. The example
+addresses and bytes above are illustrative CLI syntax, not verified game
+addresses or free storage.
 
-```sh
-python3 tools/mips_auto_integrator.py jal-patch \
-  --input overlay.bin --output overlay.patched.bin \
-  --base 0x800B7E20 --offset 0x120 \
-  --target 0x80030000 --expected-word 0x0C02EF00
-```
+## Remaining integration work
 
-The expected word must come from the exact original binary. Never use a guessed
-word or address. The command writes the output only after all validation passes.
-
-## Existing HOOK foundation
-
-The companion module still provides a conservative two-instruction function
-hook planner. Hook relocation rejects control-transfer instructions and does not
-guess a trampoline address. Full HOOK integration is a later stage.
-
-## Overlay mod source discovery
-
-The FARM overlay calls `psx_overlay_mod_sources(farm_mod_sources)`.
-CMake discovers every `src/overlay/11_GF_FARM/mod/*.c` file and appends it
-after the existing FARM source list. The initial registry
-`src/overlay/11_GF_FARM/mod/hooks.json` is intentionally empty. Registry-driven
-patch application and symbol resolution are not implemented yet.
+The three engines are still explicit-address tools. Linker-map symbol resolution,
+registry-driven JAL/HOOK requests, automatic safe trampoline allocation, overlay
+lifecycle integration, and binary/map regression validation remain future stages.
