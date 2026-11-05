@@ -57,19 +57,28 @@ class TrampolineSectionTests(unittest.TestCase):
                 '.zero 16\n',
                 encoding="utf-8",
             )
+            template = Path("cmake/overlay.ld.in").read_text(encoding="utf-8")
+
+            def overlay_block(name, object_name):
+                values = {
+                    "@NAME@": name,
+                    "@REGION@": "low",
+                    "@LIST_FILE@": "fixture",
+                    "@HEADER@": object_name,
+                    "@RODATA@": "",
+                    "@TEXT@": "",
+                    "@DATA@": "",
+                    "@BSS@": "",
+                }
+                block = template
+                for token, value in values.items():
+                    block = block.replace(token, value)
+                return block
+
             script.write_text(
-                'SECTIONS {\n'
-                '  .11_GF_FARM : {\n'
-                '    __mips_trampoline_start_11_GF_FARM = .;\n'
-                '    KEEP(*(.mips_trampoline.11_GF_FARM))\n'
-                '    __mips_trampoline_end_11_GF_FARM = .;\n'
-                '  }\n'
-                '  .12_OTHER : {\n'
-                '    __mips_trampoline_start_12_OTHER = .;\n'
-                '    KEEP(*(.mips_trampoline.12_OTHER))\n'
-                '    __mips_trampoline_end_12_OTHER = .;\n'
-                '  }\n'
-                '}\n',
+                "MEMORY { overlay_low (rwx) : ORIGIN = 0x80010000, LENGTH = 0x1000 }\\n"
+                + overlay_block("11_GF_FARM", "farm.o")
+                + overlay_block("12_OTHER", "other.o"),
                 encoding="utf-8",
             )
             subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
