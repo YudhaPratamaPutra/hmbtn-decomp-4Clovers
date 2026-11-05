@@ -70,6 +70,14 @@ void ordinary_mod(void) { }
         with self.assertRaises(HookDeclarationError):
             scan_hook_declarations(source)
 
+    def test_rejects_control_statement_after_declaration(self):
+        source = (
+            '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target"} */\n'
+            'if (enabled) { run_mod(); }\n'
+        )
+        with self.assertRaises(HookDeclarationError):
+            scan_hook_declarations(source)
+
     def test_discovers_nested_sources_in_sorted_order(self):
         with tempfile.TemporaryDirectory() as tmp:
             overlay = Path(tmp) / "11_GF_FARM"
