@@ -79,6 +79,18 @@ def generate_hook_registry(
                 f"0x{hook.address:08X} is outside the supplied image mapping"
             )
 
+        if (trampoline_start.address > trampoline_end.address:
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: linker-reserved trampoline section has reversed bounds"
+            )
+        if (trampoline_start.address & 3 or trampoline_end.address & 3):
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: linker-reserved trampoline section is not 4-byte aligned"
+            )
+        if not (base_address <= trampoline_start.address <= trampoline_end.address <= image_end):
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: linker-reserved trampoline section is outside the supplied image mapping"
+            )
         if not (trampoline_start.address <= trampoline.address
                 and trampoline.address + 16 <= trampoline_end.address):
             raise HookRegistrationError(
