@@ -61,8 +61,8 @@ def generate_hook_registry(
             site = resolve_symbol(symbols, declaration.site_symbol)
             hook = resolve_symbol(symbols, declaration.hook_symbol)
             trampoline = resolve_symbol(symbols, declaration.trampoline_symbol)
-            trampoline_start = resolve_symbol(symbols, "__mips_trampoline_start")
-            trampoline_end = resolve_symbol(symbols, "__mips_trampoline_end")
+            trampoline_start = resolve_symbol(symbols, f"__mips_trampoline_start_{module}")
+            trampoline_end = resolve_symbol(symbols, f"__mips_trampoline_end_{module}")
         except SymbolResolverError as exc:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: {exc}"
