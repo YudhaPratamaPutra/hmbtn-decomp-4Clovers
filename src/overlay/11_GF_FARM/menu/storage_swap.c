@@ -379,16 +379,13 @@ static s32 storage_try_swap(FarmStoredItem *first, s32 firstSpot, FarmStoredItem
     return 1;
 }
 
-/* Stack a seed onto the same kind in `other`. Other kinds are refused (return 1). */
+/* Stack matching non-tool items in the rucksack, capped at STACK_MAX. */
 static s32 storage_stack_items(FarmStoredItem *item, s32 spot, FarmStoredItem *other, s32 otherSpot) {
-    s32 result;
-    if (item_category(item->id) == ITEM_CATEGORY_SEED) {
-        storage_stack_count(item, other);
-        result = 0;
-    } else {
-        result = 1;
+    if (item_category(item->id) == ITEM_CATEGORY_TOOL) {
+        return 1;
     }
-    return result;
+    storage_stack_count(item, other);
+    return 0;
 }
 
 static s32 storage_spot_is_held(s32 spot) {
@@ -435,7 +432,7 @@ static void storage_draw_spot(u_long *ot, s32 index, FarmStoredItem *item) {
         return;
     }
     picture_cell_build_prim(item->id, 0, ot, storage_spots[index].x, storage_spots[index].y, PICTURE_CELL_CENTER);
-    if (item_category(item->id) == 2) {
+    if (item_category(item->id) != ITEM_CATEGORY_TOOL) {
         item_anim_draw(&current_frame->otTags[0][SWAP_LAYER_COUNTS], storage_spots[index].x,
                       storage_spots[index].y, item->count);
     }
