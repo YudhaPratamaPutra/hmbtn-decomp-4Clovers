@@ -1,8 +1,4 @@
-"""Scan explicit MIPS auto-hook declarations embedded in mod C sources.
-
-Declarations are JSON metadata in a block comment immediately before a function
-definition. The scanner never infers a game target from a function name.
-"""
+"""Scan explicit MIPS auto-hook declarations embedded in mod C sources."""
 from __future__ import annotations
 
 import argparse
@@ -20,8 +16,7 @@ class HookDeclarationError(ValueError):
 _MARKER = "MIPS_AUTO_HOOK:"
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _FUNCTION_TAIL = re.compile(
-    r"([A-Za-z_][A-Za-z0-9_]*)\\s*\\([^;{}]*\\)\\s*$",
-    re.DOTALL,
+    r"([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*$", re.DOTALL
 )
 
 
@@ -45,14 +40,13 @@ class HookDeclaration:
 
 
 def _mask_non_code(source: str) -> str:
-    """Replace comments and literals with spaces while preserving offsets/newlines."""
+    """Blank comments and literals while preserving offsets and newlines."""
     out = list(source)
     i = 0
-    n = len(source)
-    while i < n:
+    while i < len(source):
         if source.startswith("//", i):
-            end = source.find("\\n", i)
-            end = n if end < 0 else end
+            end = source.find("\n", i)
+            end = len(source) if end < 0 else end
             for j in range(i, end):
                 out[j] = " "
             i = end
@@ -62,14 +56,14 @@ def _mask_non_code(source: str) -> str:
                 raise HookDeclarationError("unterminated block comment")
             end += 2
             for j in range(i, end):
-                if source[j] != "\\n":
+                if source[j] != "\n":
                     out[j] = " "
             i = end
         elif source[i] in ('"', "'"):
             quote = source[i]
             j = i + 1
-            while j < n:
-                if source[j] == "\\\\":
+            while j < len(source):
+                if source[j] == "\\":
                     j += 2
                     continue
                 if source[j] == quote:
@@ -78,8 +72,8 @@ def _mask_non_code(source: str) -> str:
                 j += 1
             else:
                 raise HookDeclarationError("unterminated string or character literal")
-            for k in range(i, min(j, n)):
-                if source[k] != "\\n":
+            for k in range(i, min(j, len(source))):
+                if source[k] != "\n":
                     out[k] = " "
             i = j
         else:
@@ -88,18 +82,17 @@ def _mask_non_code(source: str) -> str:
 
 
 def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
-    """Return marker comment spans and parsed JSON metadata."""
     declarations = []
     i = 0
     while i < len(source):
         line = source.find("//", i)
         block = source.find("/*", i)
-        candidates = [x for x in (line, block) if x >= 0]
+        candidates = [pos for pos in (line, block) if pos >= 0]
         if not candidates:
             break
         start = min(candidates)
         if start == line:
-            end = source.find("\\n", start)
+            end = source.find("\n", start)
             end = len(source) if end < 0 else end
             comment = source[start:end]
             i = end
@@ -120,8 +113,9 @@ def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
         try:
             metadata = json.loads(payload)
         except json.JSONDecodeError as exc:
+            line_number = source.count("\n", 0, start) + 1
             raise HookDeclarationError(
-                f"invalid JSON in hook declaration at line {source.count(chr(10), 0, start) + 1}: {exc.msg}"
+                f"invalid JSON in hook declaration at line {line_number}: {exc.msg}"
             ) from exc
         if not isinstance(metadata, dict):
             raise HookDeclarationError("hook declaration metadata must be a JSON object")
@@ -129,17 +123,18 @@ def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
     return declarations
 
 
-def scan_hook_declarations(source_text: str, *, source_name: str = "<memory>") -> list[HookDeclaration]:
-    """Find declared hook functions; only explicit marker comments are considered."""
+def scan_hook_declarations(
+    source_text: str, *, source_name: str = "<memory>"
+) -> list[HookDeclaration]:
+    """Find explicitly annotated function definitions; never infer game targets."""
     if not isinstance(source_text, str):
         raise HookDeclarationError("source text must be a string")
     masked = _mask_non_code(source_text)
-    comments = _comment_declarations(source_text)
     found: list[HookDeclaration] = []
     seen_ids: set[str] = set()
     seen_sites: set[str] = set()
 
-    for start, end, metadata in comments:
+    for start, end, metadata in _comment_declarations(source_text):
         allowed = {"id", "type", "site_symbol"}
         extra = set(metadata) - allowed
         missing = allowed - set(metadata)
@@ -166,24 +161,25 @@ def scan_hook_declarations(source_text: str, *, source_name: str = "<memory>") -
         seen_sites.add(site_symbol)
 
         tail = masked[end:]
-        match = _FUNCTION_TAIL.search(tail)
-        if not match:
-            line = source_text.count("\\n", 0, start) + 1
+        brace = tail.find("{")
+        semicolon = tail.find(";")
+        boundary = min((pos for pos in (brace, semicolon) if pos >= 0), default=-1)
+        if boundary < 0 or boundary == semicolon:
             raise HookDeclarationError(
-                f"declaration at {source_name}:{line} is not followed by a function definition"
+                f"declaration at {source_name}:{source_text.count(chr(10), 0, start) + 1} "
+                "is not followed by a function definition"
             )
-        # A function definition must reach its opening brace before a statement terminator.
-        suffix_start = match.end()
-        opening = tail.find("{", suffix_start)
-        semicolon = tail.find(";", suffix_start)
-        if opening < 0 or (semicolon >= 0 and semicolon < opening):
-            raise HookDeclarationError("hook declaration is followed by a prototype, not a definition")
+        signature = tail[:boundary].strip()
+        match = _FUNCTION_TAIL.fullmatch(signature)
+        if not match:
+            raise HookDeclarationError(
+                f"cannot identify function definition after declaration in {source_name}"
+            )
         hook_symbol = match.group(1)
-        line = source_text.count("\\n", 0, start) + 1
+        line_number = source_text.count("\n", 0, start) + 1
         found.append(HookDeclaration(
-            declaration_id, hook_symbol, site_symbol, source_name, line
+            declaration_id, hook_symbol, site_symbol, source_name, line_number
         ))
-
     return found
 
 
@@ -202,22 +198,22 @@ def discover_hook_declarations(overlay_dir: str | Path) -> list[HookDeclaration]
         if path.is_symlink():
             raise HookDeclarationError(f"symlinked mod source is not allowed: {path}")
         try:
-            text = path.read_text(encoding="utf-8")
+            source = path.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
             raise HookDeclarationError(f"cannot read mod source {path}: {exc}") from exc
         relative = path.relative_to(overlay).as_posix()
-        for declaration in scan_hook_declarations(text, source_name=relative):
-            if declaration.declaration_id in ids:
+        for item in scan_hook_declarations(source, source_name=relative):
+            if item.declaration_id in ids:
                 raise HookDeclarationError(
-                    f"duplicate hook declaration id across mod sources: {declaration.declaration_id}"
+                    f"duplicate hook declaration id across mod sources: {item.declaration_id}"
                 )
-            if declaration.site_symbol in sites:
+            if item.site_symbol in sites:
                 raise HookDeclarationError(
-                    f"duplicate hook target across mod sources: {declaration.site_symbol}"
+                    f"duplicate hook target across mod sources: {item.site_symbol}"
                 )
-            ids.add(declaration.declaration_id)
-            sites.add(declaration.site_symbol)
-            results.append(declaration)
+            ids.add(item.declaration_id)
+            sites.add(item.site_symbol)
+            results.append(item)
     return results
 
 
