@@ -38,9 +38,9 @@ class AFileIntegratedPackingTests(unittest.TestCase):
             archive = output_bin.read_bytes()
             offsets = struct.unpack("<4I", output_hdt.read_bytes())
             self.assertEqual(offsets, (0, SECTOR, 2 * SECTOR, 3 * SECTOR))
-            self.assertEqual(archive[offsets[0]:offsets[1]].rstrip(b"\\0"), b"ORIGINAL")
-            self.assertEqual(archive[offsets[1]:offsets[2]].rstrip(b"\\0"), b"PATCHED-FARM")
-            self.assertEqual(archive[offsets[2]:offsets[3]].rstrip(b"\\0"), b"BUILT-OTHER")
+            self.assertEqual(archive[offsets[0]:offsets[1]].rstrip(b"\0"), b"ORIGINAL")
+            self.assertEqual(archive[offsets[1]:offsets[2]].rstrip(b"\0"), b"PATCHED-FARM")
+            self.assertEqual(archive[offsets[2]:offsets[3]].rstrip(b"\0"), b"BUILT-OTHER")
 
     def test_listed_integrated_member_must_exist(self):
         with tempfile.TemporaryDirectory() as temporary:
