@@ -904,13 +904,14 @@ static s32 item_merge_pair(FarmStoredItem *first, s32 first_arg, FarmStoredItem 
     return 0;
 }
 
-/* Stack `item` onto `target` (the cell at second_col) when the category allows: a tool
- * never stacks, and a held or bag-row cell takes seeds only. */
+/* Stack matching items onto the target cell. The held item and bag row normally
+ * accept seeds only; while the icebox is open they also accept every non-tool item. */
 static s32 item_merge_values(FarmStoredItem *item, s32 first_col, FarmStoredItem *target, s32 second_col) {
     switch (item_slot_category(second_col)) {
-    case 0:
-    case 1:
-        if (item_category(item->id) != ITEM_CATEGORY_SEED) {
+    case ITEM_SLOT_HELD:
+    case ITEM_SLOT_ROW:
+        /* Match the icebox rule: every non-tool item can stack in the bag row. */
+        if (item_category(item->id) == ITEM_CATEGORY_TOOL) {
             return 0;
         }
         /* fall through */
@@ -1120,8 +1121,9 @@ static void item_marker_draw(u_long *ot, s32 index, FarmStoredItem *item) {
         item_anim_draw(&current_frame->otTags[0][22], item_markers[index].x,
                       item_markers[index].y, item->count);
         break;
-    case ITEM_CATEGORY_CROP:
-        if (item_slot_category(index) == ITEM_SLOT_GRID) {
+    default:
+        if (item_slot_category(index) == ITEM_SLOT_GRID ||
+            item_slot_category(index) == ITEM_SLOT_ROW) {
             item_anim_draw(&current_frame->otTags[0][22], item_markers[index].x,
                           item_markers[index].y, item->count);
         }
