@@ -3,6 +3,7 @@
 psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
     SOURCES
         header.c
+        mod/panel_stamina.c
         farm_main.c
         farm_load.c
         farm_probe.c
