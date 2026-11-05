@@ -7,6 +7,7 @@ from pathlib import Path
 from tools.mips.integration import (
     IntegrationError, apply_integration_plan, build_integration_plan,
 )
+from tools.mips.validation import validate_integrated_image
 
 
 class IntegrationPipelineTests(unittest.TestCase):
@@ -70,6 +71,19 @@ class IntegrationPipelineTests(unittest.TestCase):
         )
         self.assertNotEqual(patched[0x10:0x18], bytes(image[0x10:0x18]))
         self.assertNotEqual(patched[0x30:0x40], bytes(image[0x30:0x40]))
+
+        report = validate_integrated_image(bytes(image), patched, plan)
+        self.assertEqual(report.image_size, len(image))
+        self.assertEqual(
+            {(start, end) for start, end, _ in report.authorized_ranges},
+            {(0x10, 0x18), (0x30, 0x40)},
+        )
+        self.assertEqual(
+            set(report.changed_ranges),
+            {(0x10, 0x18), (0x30, 0x40)},
+        )
+        self.assertEqual(patched[0x18:0x30], bytes(image[0x18:0x30]))
+        self.assertEqual(patched[0x40:], bytes(image[0x40:]))
 
     def test_hook_trampoline_offset_must_match_linker_symbol(self):
         image = bytearray(b"\xAA" * 0x60)
