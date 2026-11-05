@@ -279,6 +279,31 @@ validation plan is a no-op: only an output byte-for-byte identical to the
 original image is valid.
 
 
+## Stage 9 — MIPS Instruction Analysis
+
+The sequential scanner and decoder are connected through
+`tools/mips/analysis.py`. The analyzer uses the MIPS-I/R3000 decoder in
+`tools/mips/core.py` over an explicitly selected, aligned file range and an
+explicit runtime base address. It reports decoded instruction fields and
+direct branch/J/JAL references. Unsupported words are retained as undecoded
+records so the scan can continue; they are not treated as instructions.
+
+Run analysis without modifying the image:
+
+```sh
+python3 tools/mips_auto_integrator.py mips-analyze \
+  --input build/11_GF_FARM.bin --base 0x800B7E20 \
+  --start 0x0 --end 0x1000
+```
+
+The integration planner also runs the analyzer on each explicitly registered
+JAL or HOOK site and includes the decoded instruction/reference report in that
+entry's plan. The registry remains the sole source of patch targets: analysis
+references are diagnostic information and never create registry entries or
+patches automatically. The scanner does not infer code/data boundaries, so
+callers must provide a verified range when analyzing an image containing data.
+
+
 ## Stage 8 — CMake Build Integration
 
 The root CMake configuration exposes an explicit `mips-integrate-farm`
