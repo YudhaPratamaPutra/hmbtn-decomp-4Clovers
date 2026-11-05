@@ -31,7 +31,11 @@ endfunction()
 # ends its .bss on a doubleword (tools/psx_bss.py); SMALL_COMMONS names the files that
 # also own small (.sbss) ones.
 function(psx_c_objects out_var)
-    cmake_parse_arguments(PARSE_ARGV 1 ARG "OWN_COMMONS" "GP" "SOURCES;SMALL_COMMONS")
+    cmake_parse_arguments(PARSE_ARGV 1 ARG "OWN_COMMONS" "GP" "SOURCES;SMALL_COMMONS;INCLUDE_DIRS")
+    set(mod_include_flags)
+    foreach(include_dir IN LISTS ARG_INCLUDE_DIRS)
+        list(APPEND mod_include_flags -I${include_dir})
+    endforeach()
     set(objects)
     foreach(source IN LISTS ARG_SOURCES)
         cmake_path(ABSOLUTE_PATH source BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,7 +54,7 @@ function(psx_c_objects out_var)
         add_custom_command(
             OUTPUT ${object}
             COMMAND ${Python3_EXECUTABLE} tools/psx_cc.py ${relative} -o ${object} -MF ${object}.d
-                --cpp ${PSX_CPP} ${PSX_CPP_FLAGS}
+                --cpp ${PSX_CPP} ${PSX_CPP_FLAGS} ${mod_include_flags}
                 --cc1 ${PSX_CC1} ${PSX_CC1_FLAGS} -G${ARG_GP}
                 --maspsx ${Python3_EXECUTABLE} tools/maspsx/maspsx.py ${PSX_MASPSX_FLAGS} -G${ARG_GP}
                 --bss ${Python3_EXECUTABLE} tools/psx_bss.py ${bss_flags} ${relative}
@@ -190,7 +194,26 @@ function(psx_overlay name)
     if(ARG_OWN_COMMONS)
         set(own_commons OWN_COMMONS)
     endif()
-    psx_c_objects(objects GP 0 ${own_commons} SOURCES ${ARG_SOURCES})
+    # Append only this overlay's mod sources after the original game source list.
+    # The original source order, including linker GAP anchors, remains unchanged.
+    psx_overlay_mod_sources(mod_sources)
+    list(APPEND ARG_SOURCES ${mod_sources})
+
+    # Make this overlay's mod headers visible without exposing them to other overlays.
+    set(mod_include_dirs)
+    if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/mod")
+        list(APPEND mod_include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/mod")
+        file(GLOB_RECURSE mod_headers CONFIGURE_DEPENDS LIST_DIRECTORIES false
+            "${CMAKE_CURRENT_SOURCE_DIR}/mod/*.h")
+        foreach(header IN LISTS mod_headers)
+            get_filename_component(header_dir "${header}" DIRECTORY)
+            list(APPEND mod_include_dirs "${header_dir}")
+        endforeach()
+        list(REMOVE_DUPLICATES mod_include_dirs)
+        list(SORT mod_include_dirs)
+    endif()
+    psx_c_objects(objects GP 0 ${own_commons}
+        SOURCES ${ARG_SOURCES} INCLUDE_DIRS ${mod_include_dirs})
 
     # GAP <file.c> <section> <byte>...: the gap after gap_keys[i] ("<file.c> <section>")
     # is gap_bytes[i].
