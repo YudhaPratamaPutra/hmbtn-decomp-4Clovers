@@ -145,7 +145,6 @@ psx_overlay_mips_integration_targets()
                 self.assertIn("program.map", commands)
                 self.assertIn("integrate-validate", commands)
                 self.assertIn("integrated_A_FILE", commands)
-                self.assertIn(`${overlay}.bin`, commands)
 
             manifest = build / "integrated_a_file_members.txt"
             self.assertEqual(manifest.read_text().splitlines(), ["alpha.bin", "beta.bin"])
