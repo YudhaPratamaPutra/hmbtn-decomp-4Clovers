@@ -390,3 +390,35 @@ existing plan/apply/validate pipeline to CMake; it does not establish that any
 trampoline region is free, add game hooks, or prove runtime behavior. A real
 mod integration still requires verified registry entries and a review of the
 linker map and binary layout before applying patches.
+
+
+## Stage 12 — Build Pipeline per Overlay
+
+CMake now creates an opt-in `mips-integrate-<overlay>` target for every
+registered overlay that has a `mod/` directory. The target derives the overlay
+binary filename and runtime base from the existing `psx_overlay()` metadata
+and its configured load region; it does not hardcode FARM addresses.
+
+The normal `program` dependency compiles the overlay's discovered mod C
+sources and produces the matching `program.map` and original overlay BIN.
+The per-overlay target then runs, in order:
+
+1. Overlay inventory discovery.
+2. Mod C/header discovery.
+3. MIPS instruction analysis of the exact overlay image.
+4. JAL and HOOK declaration discovery.
+5. HOOK and JAL registry generation using the same linker map and overlay BIN.
+6. Integration planning.
+7. Integration apply to a separate `<overlay>.mod.bin` sidecar.
+8. Integration validation against the original overlay.
+
+For the current FARM mod directory, invoke:
+
+```sh
+cmake --build build --target mips-integrate-11_GF_FARM
+```
+
+The target is opt-in and is not part of the default build. The original overlay
+BIN, program ELF, and A_FILE are not replaced. Future overlays gain the same
+pipeline by adding a `mod/` directory and using the existing `psx_overlay()`
+declaration; no FARM-specific CMake integration block is required.
