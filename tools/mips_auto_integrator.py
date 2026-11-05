@@ -171,6 +171,20 @@ def main() -> None:
                    help="replacement runtime target")
     p.add_argument("--expected-word", required=True, type=_int)
     p.add_argument("--expected-target", type=_int)
+    for command in ("hook-plan", "hook-apply"):
+        p = sub.add_parser(command)
+        p.add_argument("--input", required=True, type=Path)
+        if command == "hook-apply":
+            p.add_argument("--output", required=True, type=Path)
+        p.add_argument("--site-offset", required=True, type=_int)
+        p.add_argument("--site-pc", required=True, type=_int)
+        p.add_argument("--hook-pc", required=True, type=_int)
+        p.add_argument("--trampoline-offset", required=True, type=_int)
+        p.add_argument("--trampoline-pc", required=True, type=_int)
+        p.add_argument("--word0", required=True, type=_int)
+        p.add_argument("--word1", required=True, type=_int)
+        p.add_argument("--expected-trampoline", required=True,
+                       help="exact 16-byte trampoline storage as 32 hex characters")
     args = parser.parse_args()
     if args.cmd == "jal-encode":
         print(f"0x{encode_jal(args.pc, args.target):08X}")
@@ -186,7 +200,7 @@ def main() -> None:
                          start_offset=args.start, end_offset=args.end,
                          target=args.target)
         print(json.dumps([item.to_dict() for item in found], indent=2))
-    else:
+    elif args.cmd == "jal-patch":
         from tools.mips.jal import apply_jal_patches, plan_jal_patch
         image = args.input.read_bytes()
         patch = plan_jal_patch(
@@ -197,6 +211,25 @@ def main() -> None:
         output = apply_jal_patches(image, [patch])
         args.output.write_bytes(output)
         print(json.dumps(patch.to_dict(), indent=2))
+    else:
+        from tools.mips.hook import apply_hook_patch, hook_plan_to_json, plan_hook_patch
+        image = args.input.read_bytes()
+        try:
+            expected_trampoline = bytes.fromhex(args.expected_trampoline)
+        except ValueError as exc:
+            parser.error(f"invalid --expected-trampoline hex: {exc}")
+        plan = plan_hook_patch(
+            image, site_offset=args.site_offset, site_pc=args.site_pc,
+            hook_pc=args.hook_pc, trampoline_offset=args.trampoline_offset,
+            trampoline_pc=args.trampoline_pc,
+            expected_original_words=(args.word0, args.word1),
+            expected_trampoline=expected_trampoline,
+        )
+        if args.cmd == "hook-plan":
+            print(hook_plan_to_json(plan))
+        else:
+            args.output.write_bytes(apply_hook_patch(image, plan))
+            print(hook_plan_to_json(plan))
 
 
 if __name__ == "__main__":
