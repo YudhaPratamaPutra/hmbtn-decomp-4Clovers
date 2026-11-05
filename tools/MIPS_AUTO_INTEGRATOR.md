@@ -1,52 +1,38 @@
-# MIPS Auto Integrator (foundation)
+# MIPS Auto Integrator
 
-Scope is intentionally limited to three primitives:
+## Stage 1 — MIPS-I/R3000 core
 
-1. MIPS-I/R3000 JAL encode/decode.
-2. JAL callsite patching with an expected-original-word guard.
-3. Function-entry hook planning/application with a trampoline.
+The reusable instruction core is in `tools/mips/core.py`. It provides:
+- Strict field decoding for SPECIAL, REGIMM, common integer/branch/load/store
+  instructions, and basic COP0/COP1/COP2 instruction classes.
+- R/I/J and conditional-branch encoders with field, alignment, and range checks.
+- Decoded signed/unsigned immediates, branch/jump destinations, and control
+  transfer/delay-slot classification.
+- Fail-closed handling: unknown or reserved encodings raise `MipsDecodeError`.
 
-The PS1 image format is little-endian. All addresses supplied to the tool are
-runtime virtual addresses; file offsets are separate inputs. The tool does not
-guess a module load address or a free trampoline location.
+This is an instruction-field core, not a complete disassembler or assembler.
+COP0/COP1/COP2 operation payloads are classified, not fully decoded. COP3,
+reserved opcodes, and unimplemented SPECIAL/REGIMM encodings are rejected.
+PS1 binary reads and writes remain little-endian in the patching layer.
 
-## Safety constraints
-
-- J/JAL targets must be aligned and in the same 256 MiB pseudo-direct region as PC+4.
-- A function-entry hook replaces exactly two instructions (8 bytes): `j hook`,
-  then `nop`.
-- The trampoline copies those two displaced instructions and jumps back to site+8.
-- The initial relocator rejects branch/jump instructions in the displaced pair.
-  This is deliberately conservative; it does not yet relocate arbitrary PC-relative
-  instructions or rewrite branch delay slots.
-- Patching requires an exact match against the expected original instruction words.
-- No patch is applied to game binaries by default; use a copy and validate output.
-
-## CLI
+Run the stage tests:
 
 ```sh
-python3 tools/mips_auto_integrator.py jal-encode --pc 0x80010000 --target 0x80023450
-python3 tools/mips_auto_integrator.py jump-decode --pc 0x80010000 --word 0x0C008D14
-python3 tools/mips_auto_integrator.py hook-plan --site 0x80012000 --hook 0x80024000 \
-  --trampoline 0x80030000 --word0 0x27BDFFE8 --word1 0xAFBF0010
+python3 -m unittest tests.test_mips_core -v
 python3 -m unittest tests.test_mips_auto_integrator -v
 ```
 
-This is a foundation, not a persistent runtime manager. Runtime overlay lifecycle
-integration is intentionally out of scope until the loader path and module address
-mapping are verified from the original source and binary.
+## Existing patch primitives
+
+The companion `tools/mips_auto_integrator.py` currently provides JAL encode/decode,
+expected-word guarded JAL patching, and a conservative two-instruction function
+hook planner. Hook relocation rejects control-transfer instructions and does not
+guess a trampoline address.
 
 ## Overlay mod source discovery
 
-The FARM overlay now calls `psx_overlay_mod_sources(farm_mod_sources)`.
+The FARM overlay calls `psx_overlay_mod_sources(farm_mod_sources)`.
 CMake discovers every `src/overlay/11_GF_FARM/mod/*.c` file and appends it
-after the existing FARM source list. `CONFIGURE_DEPENDS` causes CMake to
-reconfigure when files are added or removed. The mod directory is also on the
-preprocessor include path, so headers can be included by name.
-
-The initial registry is
-`src/overlay/11_GF_FARM/mod/hooks.json`. It is intentionally empty. JAL/HOOK
-requests are not automatically patched yet: the next integration stage must
-resolve verified original symbols and mod symbols from the linker map, map
-runtime addresses to the exact overlay file offsets, and enforce expected
-original instruction bytes before changing any binary.
+after the existing FARM source list. The initial registry
+`src/overlay/11_GF_FARM/mod/hooks.json` is intentionally empty. Registry-driven
+patch application and symbol resolution are not implemented yet.
