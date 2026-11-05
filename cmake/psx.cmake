@@ -317,3 +317,76 @@ function(psx_program)
     get_property(targets GLOBAL PROPERTY PSX_PROGRAM_TARGETS)
     add_dependencies(program ${targets})
 endfunction()
+
+
+# psx_overlay_mips_integration_targets()
+#
+# Build the MIPS/JAL/HOOK integration pipeline for overlays that contain mod/.
+# Patched overlay images are kept as sidecars; the original program outputs remain
+# untouched. mips-integrate-all is part of the default build.
+function(psx_overlay_mips_integration_targets)
+    get_property(overlays GLOBAL PROPERTY PSX_OVERLAYS)
+    set(integrated_dir ${CMAKE_BINARY_DIR}/integrated_A_FILE)
+    set(integration_targets)
+
+    foreach(overlay IN LISTS overlays)
+        set(overlay_dir ${CMAKE_SOURCE_DIR}/src/overlay/${overlay})
+        if(NOT IS_DIRECTORY "${overlay_dir}/mod")
+            continue()
+        endif()
+
+        get_property(overlay_info GLOBAL PROPERTY PSX_OVERLAY_${overlay})
+        list(GET overlay_info 0 region)
+        list(GET overlay_info 1 overlay_file)
+        get_property(base_address GLOBAL PROPERTY PSX_REGION_${region})
+        set(registry ${overlay_dir}/mod/hooks.json)
+        set(input_image ${CMAKE_BINARY_DIR}/${overlay_file})
+        set(output_image ${CMAKE_BINARY_DIR}/${overlay}.mod.bin)
+
+        add_custom_target(mips-integrate-${overlay}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                overlay-discover --root ${CMAKE_SOURCE_DIR}/src/overlay
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                mod-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                mips-analyze --input ${input_image} --base ${base_address} --summary
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                jal-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                hook-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                hook-register --overlay ${overlay_dir}
+                --map ${CMAKE_BINARY_DIR}/program.map
+                --input ${input_image} --base ${base_address}
+                --output ${registry}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                jal-register --overlay ${overlay_dir}
+                --map ${CMAKE_BINARY_DIR}/program.map
+                --input ${input_image} --base ${base_address}
+                --output ${registry}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-plan --input ${input_image} --base ${base_address}
+                --overlay ${overlay} --registry ${registry}
+                --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-apply --input ${input_image} --output ${output_image}
+                --base ${base_address} --overlay ${overlay}
+                --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-validate --input ${input_image} --patched ${output_image}
+                --base ${base_address} --overlay ${overlay}
+                --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMENT "MIPS/JAL/HOOK Auto Integrator: ${overlay}"
+            VERBATIM)
+        add_dependencies(mips-integrate-${overlay} program)
+        list(APPEND integration_targets mips-integrate-${overlay})
+        set_property(GLOBAL APPEND PROPERTY PSX_MIPS_INTEGRATION_OUTPUTS
+            "${overlay_file}|${output_image}")
+    endforeach()
+
+    add_custom_target(mips-integrate-all ALL)
+    add_dependencies(mips-integrate-all program)
+    if(integration_targets)
+        add_dependencies(mips-integrate-all ${integration_targets})
+    endif()
+endfunction()

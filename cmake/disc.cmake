@@ -43,20 +43,37 @@ add_custom_command(
 # A_FILE: the overlays built here, the other members the original's.
 file(STRINGS ${members} rows REGEX "^ *[0-9]+ +[^ ]+ +built ")
 set(built)
+set(integrated_dir ${CMAKE_BINARY_DIR}/integrated_A_FILE)
+set(stage_commands
+    COMMAND ${CMAKE_COMMAND} -E rm -rf ${integrated_dir}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${integrated_dir})
 foreach(row IN LISTS rows)
     string(REGEX MATCH "^ *[0-9]+ +([^ ]+)" _ ${row})
-    list(APPEND built ${CMAKE_BINARY_DIR}/${CMAKE_MATCH_1})
+    set(member_file ${CMAKE_MATCH_1})
+    list(APPEND built ${CMAKE_BINARY_DIR}/${member_file})
+    list(APPEND stage_commands COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_BINARY_DIR}/${member_file} ${integrated_dir}/${member_file})
 endforeach()
+get_property(integration_outputs GLOBAL PROPERTY PSX_MIPS_INTEGRATION_OUTPUTS)
+foreach(item IN LISTS integration_outputs)
+    string(REPLACE "|" ";" pair "${item}")
+    list(GET pair 0 overlay_file)
+    list(GET pair 1 output_image)
+    list(APPEND stage_commands COMMAND ${CMAKE_COMMAND} -E copy
+        ${output_image} ${integrated_dir}/${overlay_file})
+endforeach()
+add_custom_target(mips-integrate-stage ${stage_commands} DEPENDS ${built})
+add_dependencies(mips-integrate-stage mips-integrate-all)
 add_custom_command(
     OUTPUT ${afile_bin} ${afile_hdt}
     COMMAND ${Python3_EXECUTABLE} tools/afile.py pack --members ${members}
-        --original ${original}/A_FILE --built ${CMAKE_BINARY_DIR} --bin ${afile_bin} --hdt ${afile_hdt}
+        --original ${original}/A_FILE --built ${integrated_dir} --bin ${afile_bin} --hdt ${afile_hdt}
     DEPENDS ${original}.stamp ${members} ${built} ${CMAKE_SOURCE_DIR}/tools/afile.py
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Packing A_FILE"
     VERBATIM)
 add_custom_target(afile ALL DEPENDS ${afile_bin} ${afile_hdt})
-add_dependencies(afile program)
+add_dependencies(afile program mips-integrate-stage)
 
 # The disc: the original's layout and files, with the EXE and A_FILE built here.
 add_custom_command(

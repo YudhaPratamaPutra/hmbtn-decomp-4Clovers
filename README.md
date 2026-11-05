@@ -1,37 +1,19 @@
-# Harvest Moon: Back to Nature
+# MIPS / JAL / HOOK Auto Integrator — Backup
 
-A matching decompilation of *Harvest Moon: Back to Nature* (PlayStation, USA,
-`SLUS_011.15`). The C source builds the EXE and its 13 overlays byte for byte and, given
-your own copy of the disc, the whole disc image.
+This is a standalone source backup of the Auto Integrator subsystem captured from commit ac597d0128e5e542b757827caea561c4e4c1b927 on branch feature/mips-log-quiet-output.
 
-## Building
+## Contents
+- tools/mips_auto_integrator.py: command-line entry point, including the latest compact analysis output option (--summary).
+- tools/mips/: MIPS analysis, discovery, symbol resolution, declarations, JAL and HOOK engines, registration, and integration pipeline.
+- cmake/psx.cmake: build-system integration, including compact MIPS analysis invocation.
+- tests/: focused tests for MIPS, JAL, HOOK, discovery, registration, and integration behavior.
+- tools/MIPS_AUTO_INTEGRATOR.md: subsystem documentation.
 
-```sh
-docker build -t hmbtn-build .
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src:ro -v /tmp/hmbtn-build:/build \
-    -v /path/to/disc:/disc:ro hmbtn-build bash -c 'cmake -S /src -B /build -G Ninja \
-    -DORIGINAL_DISC=/disc/disc.bin && cmake --build /build --target check'
-```
+## Important
+This archive is a source backup, not an installer. It preserves the relevant subsystem files and their repository paths. It does not include the full HMBTN repository, game assets, toolchain binaries, or unrelated project files. When reusing it in a fresh Coalslav clone, review the CMake integration against that clone's current cmake/psx.cmake before replacing or merging it.
 
-`check` compares every output with the original's SHA-1. Without `-DORIGINAL_DISC` it
-builds and checks only the 14 code binaries, which needs no game data.
-
-## Exceptions
-
-Two things in the build are not compiled from source:
-
-- **One patched SDK word.** The game links PSY-Q 4.7, but the only 4.7 release
-  available has a later `LIBCD.LIB`: it is dated 2000-05-10, while every other 4.7
-  library is dated 2000-02-18. The game's copy of that library has one word different, a
-  flag in `BIOS_1`'s `.data`, so the build patches it back (`sdk/patches.txt`).
-- **Padding bytes.** Where a file's data ends off a 4-byte boundary, the original
-  build padded it. In the EXE, and in Sony's own library objects, that padding is zero.
-  In 13 places in the overlays it is not: it holds leftover memory, mostly text with
-  DOS line ends (`\r\n`, `\t0`; one is `te\t0\r\n`, the end of an assembler line
-  `.byte 0`). No object holds these bytes, so each overlay lists them as `GAP` entries
-  in its `CMakeLists.txt`.
-
-## License
-
-[CC0 1.0](LICENSE), covering this repository's own work only; `tools/maspsx` keeps its
-own license. The game and the PSY-Q SDK belong to their owners and are not included.
+## Backup provenance
+- Repository: YudhaPratamaPutra/hmbtn-decomp-4Clovers
+- Source branch: feature/mips-log-quiet-output
+- Source commit: ac597d0128e5e542b757827caea561c4e4c1b927
+- Latest log fix: mips-analyze --summary, wired through cmake/psx.cmake
