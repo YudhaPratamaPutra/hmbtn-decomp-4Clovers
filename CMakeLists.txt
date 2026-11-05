@@ -15,7 +15,7 @@ set(PSX_INCLUDE_DIRS
     src/include
     src/main src/main/cd src/main/game src/main/geometry src/main/graphics src/main/input
     src/main/sound src/main/text src/main/ui
-    src/overlay/11_GF_FARM src/overlay/11_GF_FARM/animals src/overlay/11_GF_FARM/event
+    src/overlay/11_GF_FARM src/overlay/11_GF_FARM/mod src/overlay/11_GF_FARM/animals src/overlay/11_GF_FARM/event
     src/overlay/11_GF_FARM/field src/overlay/11_GF_FARM/menu src/overlay/11_GF_FARM/people
     src/overlay/11_GF_FARM/world
     src/overlay/08_DEBUG src/overlay/10_PdaSamp src/overlay/15_saveload
@@ -57,6 +57,31 @@ add_subdirectory(src/overlay/28_GF_STAFF)
 add_subdirectory(src/overlay/30_GF_swind)
 add_subdirectory(src/overlay/31_gf_mcard)
 psx_program()
+
+
+# Optional, explicit MIPS mod integration for FARM. This target is deliberately
+# separate from the default build: it writes a sidecar image and validates it
+# without replacing the original overlay or A_FILE.
+add_custom_target(mips-integrate-farm
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+        integrate-apply
+        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
+        --output ${CMAKE_BINARY_DIR}/11_GF_FARM.mod.bin
+        --base 0x800B7E20
+        --overlay 11_GF_FARM
+        --registry ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
+        --map ${CMAKE_BINARY_DIR}/program.map
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+        integrate-validate
+        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
+        --patched ${CMAKE_BINARY_DIR}/11_GF_FARM.mod.bin
+        --base 0x800B7E20
+        --overlay 11_GF_FARM
+        --registry ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
+        --map ${CMAKE_BINARY_DIR}/program.map
+    COMMENT "Integrating and validating FARM mod sidecar image"
+    VERBATIM)
+add_dependencies(mips-integrate-farm program)
 
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).
 include(cmake/disc.cmake)
