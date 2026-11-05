@@ -8,6 +8,8 @@ on:
       - "CMakeLists.txt"
       - "tests/**"
       - "cmake/overlay.ld.in"
+      - "cmake/psx.cmake"
+      - "cmake/disc.cmake"
       - "src/overlay/**/mod/**"
       - ".github/workflows/mips-v9-unit-tests.yml"
 
