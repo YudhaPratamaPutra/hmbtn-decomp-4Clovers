@@ -57,6 +57,7 @@ add_subdirectory(src/overlay/28_GF_STAFF)
 add_subdirectory(src/overlay/30_GF_swind)
 add_subdirectory(src/overlay/31_gf_mcard)
 psx_program()
+psx_overlay_mips_integration_targets()
 
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).
 include(cmake/disc.cmake)
