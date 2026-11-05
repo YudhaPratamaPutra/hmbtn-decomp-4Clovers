@@ -62,10 +62,20 @@ def unpack(members: list[Member], bin_path: Path, hdt_path: Path, out: Path) -> 
 
 
 def pack(members: list[Member], original: Path, built: Path, bin_path: Path,
-         hdt_path: Path) -> None:
+         hdt_path: Path, integrated: Path | None = None,
+         integrated_members: set[str] | None = None) -> None:
     offsets, archive = [0], bytearray()
+    integrated_members = integrated_members or set()
     for member in members:
-        content = ((built if member.source == "built" else original) / member.file).read_bytes()
+        if member.file in integrated_members:
+            if member.source != "built" or integrated is None:
+                raise SystemExit(
+                    f"{member.file}: integrated member requires a built source and --integrated"
+                )
+            source_path = integrated / member.file
+        else:
+            source_path = (built if member.source == "built" else original) / member.file
+        content = source_path.read_bytes()
         archive += content + bytes(-len(content) % SECTOR)
         offsets.append(len(archive))
     bin_path.write_bytes(archive)
@@ -85,12 +95,23 @@ def main(argv: list[str] | None = None) -> int:
         else:
             p.add_argument("--original", type=Path, required=True)
             p.add_argument("--built", type=Path, required=True)
+            p.add_argument("--integrated", type=Path,
+                           help="directory containing integrated overlay binaries")
+            p.add_argument("--integrated-members", type=Path,
+                           help="text file listing A_FILE member filenames replaced by integrated binaries")
     args = parser.parse_args(argv)
     members = load_members(args.members)
     if args.command == "unpack":
         unpack(members, args.bin, args.hdt, args.out)
     else:
-        pack(members, args.original, args.built, args.bin, args.hdt)
+        integrated_members = set()
+        if args.integrated_members:
+            integrated_members = {
+                line.strip() for line in args.integrated_members.read_text().splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            }
+        pack(members, args.original, args.built, args.bin, args.hdt,
+             integrated=args.integrated, integrated_members=integrated_members)
     return 0
 
 
