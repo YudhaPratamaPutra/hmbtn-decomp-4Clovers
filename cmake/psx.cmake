@@ -154,6 +154,17 @@ function(psx_exe name)
     set_property(GLOBAL PROPERTY PSX_EXE ${name} ${ARG_STACK} ${ARG_REGION_TEXT})
 endfunction()
 
+# psx_overlay_mod_sources(<var>)
+#
+# Discover optional C sources in the current overlay's mod/ directory. The returned
+# paths are relative to the overlay, matching psx_overlay(SOURCES ...). CONFIGURE_DEPENDS
+# makes CMake regenerate when mod C files are added or removed.
+function(psx_overlay_mod_sources out_var)
+    file(GLOB mod_sources CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/mod/*.c)
+    set(${out_var} ${mod_sources} PARENT_SCOPE)
+endfunction()
+
 # psx_overlay(<name> FILE <file> REGION <region> [OWN_COMMONS]
 #             SOURCES <file.c>... [GAP <file.c> <section> <byte>...]...)
 #
