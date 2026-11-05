@@ -35,12 +35,25 @@ jobs:
       #    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
       #    bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target check'
 
-      - name: Build and check full disc
+      - name: Build full disc and run MIPS FARM integration
         if: github.event_name == 'workflow_dispatch'
         run: >
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src
           -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
-          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin && cmake --build build --target disc'
+          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin &&
+          cmake --build build --target disc mips-integrate-farm'
+
+      - name: Upload FARM integration verification files
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: farm-integration-verification
+          path: |
+            build/11_GF_FARM.bin
+            build/11_GF_FARM.mod.bin
+            build/program.map
+          if-no-files-found: error
+          retention-days: 7
           
       
       - name: Install rclone and zip
