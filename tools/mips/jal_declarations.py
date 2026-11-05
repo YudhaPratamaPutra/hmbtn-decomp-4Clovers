@@ -43,7 +43,7 @@ def _comments(source: str) -> list[tuple[int, int, str]]:
             quote = source[i]
             i += 1
             while i < len(source):
-                if source[i] == "\\\\":
+                if source[i] == "\\":
                     i += 2
                 elif source[i] == quote:
                     i += 1
@@ -52,7 +52,7 @@ def _comments(source: str) -> list[tuple[int, int, str]]:
                     i += 1
             continue
         if source.startswith("//", i):
-            end = source.find("\\n", i)
+            end = source.find("\n", i)
             end = len(source) if end < 0 else end
             if _MARKER in source[i:end]:
                 raise JalDeclarationError("MIPS_AUTO_JAL declarations must use block comments")
@@ -101,9 +101,7 @@ def scan_jal_declarations(source_text: str, *, source_name: str = "<memory>") ->
             raise JalDeclarationError("JAL declaration: " + "; ".join(detail))
         if data["type"] != "jal":
             raise JalDeclarationError("MIPS_AUTO_JAL type must be 'jal'")
-        ident = data["id"]
-        site = data["site_symbol"]
-        target = data["target_symbol"]
+        ident, site, target = data["id"], data["site_symbol"], data["target_symbol"]
         if not isinstance(ident, str) or not ident.strip():
             raise JalDeclarationError("JAL declaration id must be a non-empty string")
         for field, value in (("site_symbol", site), ("target_symbol", target)):
@@ -115,10 +113,8 @@ def scan_jal_declarations(source_text: str, *, source_name: str = "<memory>") ->
             raise JalDeclarationError(f"duplicate JAL site declaration: {site}")
         ids.add(ident)
         sites.add(site)
-        found.append(JalDeclaration(
-            ident, site, target, source_name,
-            source_text.count("\\n", 0, start) + 1,
-        ))
+        found.append(JalDeclaration(ident, site, target, source_name,
+                                    source_text.count("\n", 0, start) + 1))
     return found
 
 
