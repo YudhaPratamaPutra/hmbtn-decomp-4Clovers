@@ -91,6 +91,7 @@ def decode(word: int, pc: int = 0) -> Instruction:
         if mnemonic is None:
             raise MipsDecodeError(f"unsupported/reserved REGIMM rt 0x{rt:02X}")
         control = True
+        branch_target = (pc + 4 + (_signed16(imm) << 2)) & MASK32
     elif op in (16, 17, 18):
         cop = {16: "cop0", 17: "cop1", 18: "cop2"}[op]
         if rs == 8:
