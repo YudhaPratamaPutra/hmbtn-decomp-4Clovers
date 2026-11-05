@@ -119,8 +119,8 @@ def build_integration_plan(
             _keys(item, required, set(), context)
         elif kind == "hook":
             required = common | {
-                "site_offset", "hook_symbol", "trampoline_offset",
-                "expected_words", "expected_trampoline",
+                "site_offset", "hook_symbol", "trampoline_symbol",
+                "trampoline_offset", "expected_words", "expected_trampoline",
             }
             _keys(item, required, set(), context)
         else:
@@ -162,12 +162,34 @@ def build_integration_plan(
                     item["trampoline_offset"], f"{context}.trampoline_offset"
                 )
                 hook = resolve_symbol(symbols, item["hook_symbol"])
+                trampoline = resolve_symbol(symbols, item["trampoline_symbol"])
+                trampoline_start = resolve_symbol(symbols, "__mips_trampoline_start")
+                trampoline_end = resolve_symbol(symbols, "__mips_trampoline_end")
                 if base + site_offset != site.address:
                     raise IntegrationError(
                         f"{entry_id}: base + site_offset does not equal site symbol address"
                     )
                 if base + trampoline_offset > 0xFFFFFFFF:
                     raise IntegrationError(f"{entry_id}: trampoline mapping overflows")
+                if base + trampoline_offset != trampoline.address:
+                    raise IntegrationError(
+                        f"{entry_id}: base + trampoline_offset does not equal trampoline symbol address"
+                    )
+                image_end = base + len(image)
+                if (trampoline_start.address > trampoline_end.address
+                        or trampoline_start.address & 3 or trampoline_end.address & 3):
+                    raise IntegrationError(
+                        f"{entry_id}: linker-reserved trampoline section has invalid bounds"
+                    )
+                if not (base <= trampoline_start.address <= trampoline_end.address <= image_end):
+                    raise IntegrationError(
+                        f"{entry_id}: linker-reserved trampoline section is outside the image"
+                    )
+                if not (trampoline_start.address <= trampoline.address
+                        and trampoline.address + 16 <= trampoline_end.address):
+                    raise IntegrationError(
+                        f"{entry_id}: trampoline symbol is outside the linker-reserved section"
+                    )
                 words = item["expected_words"]
                 if not isinstance(words, list) or len(words) != 2:
                     raise IntegrationError(f"{entry_id}: expected_words must contain two words")
