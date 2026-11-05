@@ -130,7 +130,7 @@ def write_jal_registry(overlay_dir: str | Path, output_path: str | Path, *,
                 if site in generated_sites:
                     raise JalRegistrationError(f"generated JAL site conflicts with existing registry entry: {site}")
                 hooks.append(entry)
-        hooks.extend(generated["jal"])
+    hooks.extend(generated["jal"])
     result = {
         "schema_version": 1,
         "module": generated["module"],
