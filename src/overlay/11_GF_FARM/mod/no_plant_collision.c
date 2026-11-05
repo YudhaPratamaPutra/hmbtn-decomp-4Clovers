@@ -1,13 +1,11 @@
 /*
- * Walk-through crop collision helper for the FARM overlay.
+ * Crop pass-through replacement for the FARM tile-state query.
  *
- * The original farm_tile_state() is local to farm_probe.c. This replacement
- * keeps its tile-rule behavior for non-crops and reports crop cells as open.
- * The JAL registry will route farm_probe_steps() through this function.
+ * Keep the original tile-rule result for every non-crop tile. Crop records
+ * are reported as open so farm_probe_steps can walk through planted cells.
  */
 #include "farm_state.h"
 #include "farm_tables.h"
-#include "field/field.h"
 #include "items.h"
 
 s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
