@@ -173,13 +173,17 @@ def scan_hook_declarations(
                 raise HookDeclarationError(
                     "trampoline_offset must be a non-negative aligned integer"
                 )
+            if not isinstance(trampoline_offset, (int, str)):
+                raise HookDeclarationError(
+                    "trampoline_offset must be a non-negative aligned integer"
+                )
             try:
                 trampoline_offset = (
                     int(trampoline_offset, 0)
                     if isinstance(trampoline_offset, str)
-                    else int(trampoline_offset)
+                    else trampoline_offset
                 )
-            except (TypeError, ValueError) as exc:
+            except ValueError as exc:
                 raise HookDeclarationError(
                     "trampoline_offset must be a non-negative aligned integer"
                 ) from exc
