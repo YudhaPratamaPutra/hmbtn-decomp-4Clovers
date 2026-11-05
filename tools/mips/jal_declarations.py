@@ -64,9 +64,9 @@ def _comments(source: str) -> list[tuple[int, int, str]]:
                 raise JalDeclarationError("unterminated block comment")
             end += 2
             comment = source[i:end]
-            if _MARKER in comment:
-                if not comment[2:-2].lstrip().startswith(_MARKER):
-                    raise JalDeclarationError("MIPS_AUTO_JAL marker must begin its block comment")
+            if comment[2:-2].lstrip().startswith(_MARKER):
+                if comment.count(_MARKER) != 1:
+                    raise JalDeclarationError("each JAL declaration comment must contain exactly one marker")
                 found.append((i, end, comment))
             i = end
             continue
