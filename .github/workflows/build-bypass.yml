@@ -94,6 +94,17 @@ jobs:
             --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
             --verbose
 
+      - name: Upload FARM integration inputs and sidecar
+        uses: actions/upload-artifact@v4
+        with:
+          name: farm-integration-verification
+          path: |
+            build/11_GF_FARM.bin
+            build/11_GF_FARM.mod.bin
+            build/program.map
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Publish Google Drive download link
         if: github.event_name == 'workflow_dispatch'
         run: |
