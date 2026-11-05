@@ -31,9 +31,9 @@ class TrampolineSectionTests(unittest.TestCase):
         self.assertIn("{0, 0, 0, 0}", header)
 
     def test_linker_keeps_each_overlay_trampoline_in_its_own_output_section(self):
-        assembler = shutil.which("as")
-        linker = shutil.which("ld")
-        nm = shutil.which("nm")
+        assembler = shutil.which("mips-linux-gnu-as") or shutil.which("as")
+        linker = shutil.which("mips-linux-gnu-ld") or shutil.which("ld")
+        nm = shutil.which("mips-linux-gnu-nm") or shutil.which("nm")
         if not all((assembler, linker, nm)):
             self.skipTest("GNU as, ld, and nm are required for linker-section fixture")
 
@@ -88,16 +88,18 @@ class TrampolineSectionTests(unittest.TestCase):
                 + "/DISCARD/ : { *(*); }\n}\n",
                 encoding="utf-8",
             )
-            subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
+            assembler_flags = (["-EL", "-march=r3000", "-mtune=r3000", "-G0"]
+                               if Path(assembler).name.startswith("mips-linux-gnu-") else [])
+            subprocess.run([assembler, *assembler_flags, str(farm_source), "-o", str(farm_object)],
                            check=True, capture_output=True, text=True)
-            subprocess.run([assembler, str(other_source), "-o", str(other_object)],
+            subprocess.run([assembler, *assembler_flags, str(other_source), "-o", str(other_object)],
                            check=True, capture_output=True, text=True)
-            subprocess.run([assembler, str(farm_header_source), "-o", str(farm_header_object)],
+            subprocess.run([assembler, *assembler_flags, str(farm_header_source), "-o", str(farm_header_object)],
                            check=True, capture_output=True, text=True)
-            subprocess.run([assembler, str(other_header_source), "-o", str(other_header_object)],
+            subprocess.run([assembler, *assembler_flags, str(other_header_source), "-o", str(other_header_object)],
                            check=True, capture_output=True, text=True)
             link_result = subprocess.run(
-                [linker, "--no-check-sections", "-T", str(script), "-Map", str(root / "fixture.map"),
+                [linker, "-EL", "--no-check-sections", "-nostdlib", "-T", str(script), "-Map", str(root / "fixture.map"),
                  "-o", str(elf), str(farm_header_object), str(farm_object),
                  str(other_header_object), str(other_object)],
                 check=False, capture_output=True, text=True, cwd=root,
