@@ -192,7 +192,7 @@ def main() -> None:
     p = sub.add_parser("symbol-list")
     p.add_argument("--map", required=True, type=Path, help="GNU ld program.map")
     p.add_argument("--json", action="store_true", help="emit JSON")
-    for command in ("integrate-plan", "integrate-apply"):
+    for command in ("integrate-plan", "integrate-apply", "integrate-validate"):
         p = sub.add_parser(command)
         p.add_argument("--input", required=True, type=Path, help="exact overlay image to inspect")
         p.add_argument("--base", required=True, type=_int,
@@ -268,7 +268,7 @@ def main() -> None:
                 for row in rows:
                     addresses = ", ".join(item["address"] for item in row["definitions"])
                     print(f"{row['symbol']}: {addresses}")
-    elif args.cmd in ("integrate-plan", "integrate-apply"):
+    elif args.cmd in ("integrate-plan", "integrate-apply", "integrate-validate"):
         from tools.mips.integration import (
             apply_integration_plan, build_integration_plan,
         )
