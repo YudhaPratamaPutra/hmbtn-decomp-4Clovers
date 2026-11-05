@@ -5,6 +5,10 @@
 @RODATA@
 @TEXT@
 @DATA@
+    . = ALIGN(., 4);
+    __mips_trampoline_start_@NAME@ = .;
+    KEEP(*(.mips_trampoline.@NAME@))
+    __mips_trampoline_end_@NAME@ = .;
 @BSS@
     . = ALIGN(., 0x800);  /* the A_FILE member is whole sectors */
 }

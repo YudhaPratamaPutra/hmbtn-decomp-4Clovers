@@ -154,6 +154,13 @@ def main() -> None:
     p = sub.add_parser("jump-decode")
     p.add_argument("--pc", required=True, type=_int)
     p.add_argument("--word", required=True, type=_int)
+    p = sub.add_parser("mips-analyze")
+    p.add_argument("--input", required=True, type=Path)
+    p.add_argument("--base", required=True, type=_int,
+                   help="runtime address mapped to byte zero of input")
+    p.add_argument("--start", type=_int, default=0)
+    p.add_argument("--end", type=_int)
+    p.add_argument("--json", action="store_true")
     p = sub.add_parser("jal-scan")
     p.add_argument("--input", required=True, type=Path)
     p.add_argument("--base", required=True, type=_int,
@@ -186,6 +193,11 @@ def main() -> None:
         p.add_argument("--word1", required=True, type=_int)
         p.add_argument("--expected-trampoline", required=True,
                        help="exact 16-byte trampoline storage as 32 hex characters")
+    p = sub.add_parser("overlay-discover")
+    p.add_argument("--root", required=True, type=Path,
+                   help="src/overlay directory containing overlay subdirectories")
+    p.add_argument("--json", action="store_true",
+                   help="emit machine-readable overlay inventory")
     p = sub.add_parser("mod-discover")
     p.add_argument("--overlay", required=True, type=Path,
                    help="overlay directory containing mod/")
@@ -197,6 +209,19 @@ def main() -> None:
     p.add_argument("--json", action="store_true",
                    help="emit machine-readable hook declarations")
     p = sub.add_parser("hook-register")
+    p.add_argument("--overlay", required=True, type=Path,
+                   help="overlay directory containing mod/**/*.c")
+    p.add_argument("--map", required=True, type=Path, help="matching GNU ld program.map")
+    p.add_argument("--input", required=True, type=Path, help="exact linked overlay image")
+    p.add_argument("--base", required=True, type=_int,
+                   help="runtime address mapped to byte zero of the image")
+    p.add_argument("--output", type=Path,
+                   help="registry output path (default: <overlay>/mod/hooks.json)")
+    p = sub.add_parser("jal-discover")
+    p.add_argument("--overlay", required=True, type=Path,
+                   help="overlay directory containing mod/**/*.c")
+    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("jal-register")
     p.add_argument("--overlay", required=True, type=Path,
                    help="overlay directory containing mod/**/*.c")
     p.add_argument("--map", required=True, type=Path, help="matching GNU ld program.map")
@@ -230,6 +255,13 @@ def main() -> None:
         print(f"0x{encode_jal(args.pc, args.target):08X}")
     elif args.cmd == "jump-decode":
         print(json.dumps(decode_jump(args.pc, args.word), indent=2))
+    elif args.cmd == "mips-analyze":
+        from tools.mips.analysis import analyze_mips_image
+        report = analyze_mips_image(
+            args.input.read_bytes(), args.base,
+            start_offset=args.start, end_offset=args.end,
+        )
+        print(json.dumps(report.to_dict(), indent=2))
     elif args.cmd == "jal-scan":
         from tools.mips.jal import scan_jal
         found = scan_jal(args.input.read_bytes(), args.base,
@@ -356,6 +388,42 @@ def main() -> None:
         print(f"  Overlay: {registry['module']}")
         print(f"  Registry: {output_path}")
         print(f"  Registered hooks: {len(registry['hooks'])}")
+    elif args.cmd == "jal-discover":
+        from tools.mips.jal_declarations import discover_jal_declarations
+        declarations = discover_jal_declarations(args.overlay)
+        payload = [item.to_dict() for item in declarations]
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"[MIPS AUTO INTEGRATOR] JAL DECLARATIONS - {len(payload)}")
+            for item in payload:
+                print(f"  {item['id']}: {item['site_symbol']} -> {item['target_symbol']} ({item['source']}:{item['line']})")
+    elif args.cmd == "jal-register":
+        from tools.mips.jal_registration import write_jal_registry
+        output_path = args.output or (args.overlay / "mod" / "hooks.json")
+        registry = write_jal_registry(
+            args.overlay, output_path,
+            map_path=args.map, image_path=args.input,
+            base_address=args.base,
+        )
+        jal_count = sum(1 for item in registry["hooks"] if item["type"] == "jal")
+        print("[MIPS AUTO INTEGRATOR] JAL REGISTRATION COMPLETE")
+        print(f"  Overlay: {registry['module']}")
+        print(f"  Registry: {output_path}")
+        print(f"  Registered JAL entries: {jal_count}")
+    elif args.cmd == "overlay-discover":
+        from tools.mips.discovery import discover_overlays
+        overlays = discover_overlays(args.root)
+        payload = [item.to_dict() for item in overlays]
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"[MIPS AUTO INTEGRATOR] OVERLAY DISCOVERY - {len(payload)}")
+            for item in payload:
+                print(
+                    f"  {item['overlay']}: mod={item['has_mod_directory']}, "
+                    f"C={item['source_count']}, H={item['header_count']}"
+                )
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
         if not args.json:

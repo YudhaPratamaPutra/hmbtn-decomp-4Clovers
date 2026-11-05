@@ -6,8 +6,13 @@
  */
 #include "farm_state.h"
 #include "farm_tables.h"
+#include "field.h"
 #include "items.h"
+#include "mips_auto_hook.h"
 
+MIPS_AUTO_HOOK_TRAMPOLINE(farm_tile_state_trampoline);
+
+/* MIPS_AUTO_HOOK: {"id":"farm-no-plant-collision","type":"hook","site_symbol":"farm_tile_state","trampoline_symbol":"farm_tile_state_trampoline"} */
 s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
 {
     FarmFieldTile *record;
@@ -26,11 +31,17 @@ s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
     }
 
     entry = game_state.itemInfo;
-    if (record->value < ITEM_COUNT && entry[record->value].crop != CROP_NONE) {
+    if (record->value >= ITEM_COUNT) {
+        return 0;
+    }
+    if (entry[record->value].crop != CROP_NONE) {
         return 0;
     }
 
     ruleIndex = entry[record->value].tileRule[record->kind];
+    if (ruleIndex < 0) {
+        return 2;
+    }
     status = game_state.tileRules[ruleIndex].status;
 
     switch (status) {

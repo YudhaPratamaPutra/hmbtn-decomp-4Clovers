@@ -17,7 +17,7 @@ from typing import Iterable
 
 
 _ADDRESS_ROW = re.compile(
-    r"^\s*(0x[0-9a-fA-F]{1,8})\s+([A-Za-z_][A-Za-z0-9_.$@]*)"
+    r"^\s*(0x[0-9a-fA-F]{1,16})\s+([A-Za-z_][A-Za-z0-9_.$@]*)"
     r"(?:\s*(?:=|$).*)?$"
 )
 

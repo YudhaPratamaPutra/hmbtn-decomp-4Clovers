@@ -31,7 +31,11 @@ endfunction()
 # ends its .bss on a doubleword (tools/psx_bss.py); SMALL_COMMONS names the files that
 # also own small (.sbss) ones.
 function(psx_c_objects out_var)
-    cmake_parse_arguments(PARSE_ARGV 1 ARG "OWN_COMMONS" "GP" "SOURCES;SMALL_COMMONS")
+    cmake_parse_arguments(PARSE_ARGV 1 ARG "OWN_COMMONS" "GP" "SOURCES;SMALL_COMMONS;INCLUDE_DIRS")
+    set(mod_include_flags)
+    foreach(include_dir IN LISTS ARG_INCLUDE_DIRS)
+        list(APPEND mod_include_flags -I${include_dir})
+    endforeach()
     set(objects)
     foreach(source IN LISTS ARG_SOURCES)
         cmake_path(ABSOLUTE_PATH source BASE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,7 +54,7 @@ function(psx_c_objects out_var)
         add_custom_command(
             OUTPUT ${object}
             COMMAND ${Python3_EXECUTABLE} tools/psx_cc.py ${relative} -o ${object} -MF ${object}.d
-                --cpp ${PSX_CPP} ${PSX_CPP_FLAGS}
+                --cpp ${PSX_CPP} ${PSX_CPP_FLAGS} ${mod_include_flags}
                 --cc1 ${PSX_CC1} ${PSX_CC1_FLAGS} -G${ARG_GP}
                 --maspsx ${Python3_EXECUTABLE} tools/maspsx/maspsx.py ${PSX_MASPSX_FLAGS} -G${ARG_GP}
                 --bss ${Python3_EXECUTABLE} tools/psx_bss.py ${bss_flags} ${relative}
@@ -190,7 +194,26 @@ function(psx_overlay name)
     if(ARG_OWN_COMMONS)
         set(own_commons OWN_COMMONS)
     endif()
-    psx_c_objects(objects GP 0 ${own_commons} SOURCES ${ARG_SOURCES})
+    # Append only this overlay's mod sources after the original game source list.
+    # The original source order, including linker GAP anchors, remains unchanged.
+    psx_overlay_mod_sources(mod_sources)
+    list(APPEND ARG_SOURCES ${mod_sources})
+
+    # Make this overlay's mod headers visible without exposing them to other overlays.
+    set(mod_include_dirs)
+    if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/mod")
+        list(APPEND mod_include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/mod")
+        file(GLOB_RECURSE mod_headers CONFIGURE_DEPENDS LIST_DIRECTORIES false
+            "${CMAKE_CURRENT_SOURCE_DIR}/mod/*.h")
+        foreach(header IN LISTS mod_headers)
+            get_filename_component(header_dir "${header}" DIRECTORY)
+            list(APPEND mod_include_dirs "${header_dir}")
+        endforeach()
+        list(REMOVE_DUPLICATES mod_include_dirs)
+        list(SORT mod_include_dirs)
+    endif()
+    psx_c_objects(objects GP 0 ${own_commons}
+        SOURCES ${ARG_SOURCES} INCLUDE_DIRS ${mod_include_dirs})
 
     # GAP <file.c> <section> <byte>...: the gap after gap_keys[i] ("<file.c> <section>")
     # is gap_bytes[i].
@@ -331,4 +354,75 @@ function(psx_program)
     add_custom_target(program ALL DEPENDS ${outputs})
     get_property(targets GLOBAL PROPERTY PSX_PROGRAM_TARGETS)
     add_dependencies(program ${targets})
+endfunction()
+
+
+# psx_overlay_mips_integration_targets()
+#
+# Create an opt-in MIPS integration target for each overlay with a mod/ directory.
+# The normal program target first compiles every overlay mod source and produces
+# program.map plus the original overlay BINs. Integration then discovers declarations,
+# generates the registry, plans/applies patches, and validates a separate sidecar BIN.
+function(psx_overlay_mips_integration_targets)
+    get_property(overlays GLOBAL PROPERTY PSX_OVERLAYS)
+    set(integrated_members_file ${CMAKE_BINARY_DIR}/integrated_a_file_members.txt)
+    file(WRITE ${integrated_members_file} "")
+    set(integrated_dir ${CMAKE_BINARY_DIR}/integrated_A_FILE)
+    foreach(overlay IN LISTS overlays)
+        set(overlay_dir ${CMAKE_SOURCE_DIR}/src/overlay/${overlay})
+        if(NOT IS_DIRECTORY "${overlay_dir}/mod")
+            continue()
+        endif()
+
+        get_property(overlay_info GLOBAL PROPERTY PSX_OVERLAY_${overlay})
+        list(GET overlay_info 0 region)
+        list(GET overlay_info 1 overlay_file)
+        get_property(base_address GLOBAL PROPERTY PSX_REGION_${region})
+        set(registry ${overlay_dir}/mod/hooks.json)
+        set(input_image ${CMAKE_BINARY_DIR}/${overlay_file})
+        set(output_image ${CMAKE_BINARY_DIR}/${overlay}.mod.bin)
+        file(APPEND ${integrated_members_file} "${overlay_file}\n")
+
+        add_custom_target(mips-integrate-${overlay}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                overlay-discover --root ${CMAKE_SOURCE_DIR}/src/overlay
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                mod-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                mips-analyze --input ${input_image} --base ${base_address}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                jal-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                hook-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                hook-register --overlay ${overlay_dir}
+                --map ${CMAKE_BINARY_DIR}/program.map
+                --input ${input_image} --base ${base_address}
+                --output ${registry}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                jal-register --overlay ${overlay_dir}
+                --map ${CMAKE_BINARY_DIR}/program.map
+                --input ${input_image} --base ${base_address}
+                --output ${registry}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-plan --input ${input_image} --base ${base_address}
+                --overlay ${overlay} --registry ${registry}
+                --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-apply --input ${input_image} --output ${output_image}
+                --base ${base_address} --overlay ${overlay}
+                --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-validate --input ${input_image} --patched ${output_image}
+                --base ${base_address} --overlay ${overlay}
+                --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${integrated_dir}
+            COMMAND ${CMAKE_COMMAND} -E copy ${output_image} ${integrated_dir}/${overlay_file}
+            COMMENT "MIPS Auto Integrator: complete per-overlay pipeline for ${overlay}"
+            VERBATIM)
+        add_dependencies(mips-integrate-${overlay} program)
+        if(TARGET afile)
+            add_dependencies(afile mips-integrate-${overlay})
+        endif()
+    endforeach()
 endfunction()

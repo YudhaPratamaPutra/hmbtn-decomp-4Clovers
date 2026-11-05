@@ -25,6 +25,8 @@ set(layout ${CMAKE_SOURCE_DIR}/disc/disc.xml)
 set(members ${CMAKE_SOURCE_DIR}/disc/a_file.txt)
 set(afile_bin ${CMAKE_BINARY_DIR}/A_FILE.BIN)
 set(afile_hdt ${CMAKE_BINARY_DIR}/A_FILE.HDT)
+set(integrated_dir ${CMAKE_BINARY_DIR}/integrated_A_FILE)
+set(integrated_members ${CMAKE_BINARY_DIR}/integrated_a_file_members.txt)
 set(translated_original ${CMAKE_BINARY_DIR}/translated_A_FILE)
 set(translation_stamp ${CMAKE_BINARY_DIR}/translations.stamp)
 
@@ -76,8 +78,9 @@ endforeach()
 add_custom_command(
     OUTPUT ${afile_bin} ${afile_hdt}
     COMMAND ${Python3_EXECUTABLE} tools/afile.py pack --members ${members}
-        --original ${translated_original} --built ${CMAKE_BINARY_DIR} --bin ${afile_bin} --hdt ${afile_hdt}
-    DEPENDS ${translation_stamp} ${members} ${built} ${CMAKE_SOURCE_DIR}/tools/afile.py
+        --original ${translated_original} --built ${CMAKE_BINARY_DIR} --integrated ${integrated_dir}
+        --integrated-members ${integrated_members} --bin ${afile_bin} --hdt ${afile_hdt}
+    DEPENDS ${translation_stamp} ${members} ${built} ${integrated_members} ${CMAKE_SOURCE_DIR}/tools/afile.py
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Packing A_FILE"
     VERBATIM)

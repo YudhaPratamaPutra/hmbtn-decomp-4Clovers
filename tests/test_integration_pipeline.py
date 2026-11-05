@@ -7,6 +7,7 @@ from pathlib import Path
 from tools.mips.integration import (
     IntegrationError, apply_integration_plan, build_integration_plan,
 )
+from tools.mips.validation import validate_integrated_image
 
 
 class IntegrationPipelineTests(unittest.TestCase):
@@ -56,10 +57,13 @@ class IntegrationPipelineTests(unittest.TestCase):
         self.write_inputs([{
             "id": "farm-entry", "type": "hook", "site_symbol": "farm_entry",
             "site_offset": "0x10", "hook_symbol": "farm_mod_entry",
-            "trampoline_offset": "0x30",
+            "trampoline_symbol": "farm_trampoline", "trampoline_offset": "0x30",
             "expected_words": ["0x27BDFFE8", "0xAFBF0010"],
             "expected_trampoline": "CC" * 16,
-        }], "0x80010010 farm_entry\n0x80012000 farm_mod_entry\n")
+        }], "0x80010010 farm_entry\n0x80012000 farm_mod_entry\n"
+             "0x80010030 farm_trampoline\n"
+             "0x80010030 __mips_trampoline_start_11_GF_FARM\n"
+             "0x80010040 __mips_trampoline_end_11_GF_FARM\n")
         plan = self.run_plan(image)
         patched = apply_integration_plan(
             bytes(image), plan, base_address=self.base, overlay="11_GF_FARM",
@@ -67,6 +71,36 @@ class IntegrationPipelineTests(unittest.TestCase):
         )
         self.assertNotEqual(patched[0x10:0x18], bytes(image[0x10:0x18]))
         self.assertNotEqual(patched[0x30:0x40], bytes(image[0x30:0x40]))
+
+        report = validate_integrated_image(bytes(image), patched, plan)
+        self.assertEqual(report.image_size, len(image))
+        self.assertEqual(
+            {(start, end) for start, end, _ in report.authorized_ranges},
+            {(0x10, 0x18), (0x30, 0x40)},
+        )
+        self.assertEqual(
+            set(report.changed_ranges),
+            {(0x10, 0x18), (0x30, 0x40)},
+        )
+        self.assertEqual(patched[0x18:0x30], bytes(image[0x18:0x30]))
+        self.assertEqual(patched[0x40:], bytes(image[0x40:]))
+
+    def test_hook_trampoline_offset_must_match_linker_symbol(self):
+        image = bytearray(b"\xAA" * 0x60)
+        struct.pack_into("<2I", image, 0x10, 0x27BDFFE8, 0xAFBF0010)
+        image[0x30:0x40] = b"\xCC" * 16
+        self.write_inputs([{
+            "id": "farm-entry", "type": "hook", "site_symbol": "farm_entry",
+            "site_offset": "0x10", "hook_symbol": "farm_mod_entry",
+            "trampoline_symbol": "farm_trampoline", "trampoline_offset": "0x34",
+            "expected_words": ["0x27BDFFE8", "0xAFBF0010"],
+            "expected_trampoline": "CC" * 16,
+        }], "0x80010010 farm_entry\n0x80012000 farm_mod_entry\n"
+             "0x80010030 farm_trampoline\n"
+             "0x80010030 __mips_trampoline_start_11_GF_FARM\n"
+             "0x80010040 __mips_trampoline_end_11_GF_FARM\n")
+        with self.assertRaisesRegex(IntegrationError, "does not equal trampoline symbol address"):
+            self.run_plan(image)
 
     def test_missing_symbol_fails_closed(self):
         self.write_inputs([{

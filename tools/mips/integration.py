@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .hook import HookEngineError, apply_hook_patch, plan_hook_patch
+from .analysis import analyze_mips_image
 from .jal import JalEngineError, apply_jal_patches, plan_jal_patch
 from .symbols import SymbolResolverError, load_linker_map, resolve_symbol
 
@@ -119,8 +120,8 @@ def build_integration_plan(
             _keys(item, required, set(), context)
         elif kind == "hook":
             required = common | {
-                "site_offset", "hook_symbol", "trampoline_offset",
-                "expected_words", "expected_trampoline",
+                "site_offset", "hook_symbol", "trampoline_symbol",
+                "trampoline_offset", "expected_words", "expected_trampoline",
             }
             _keys(item, required, set(), context)
         else:
@@ -150,10 +151,14 @@ def build_integration_plan(
                 )
                 plans.append(("jal", patch))
                 occupied.append((offset, offset + 4, entry_id))
+                analysis = analyze_mips_image(
+                    image, base, start_offset=offset, end_offset=offset + 4,
+                ).to_dict()
                 rendered.append({
                     "id": entry_id, "type": "jal",
                     "site_symbol": site.name, "site_address": f"0x{site.address:08X}",
                     "target_symbol": target.name, "target_address": f"0x{target.address:08X}",
+                    "analysis": analysis,
                     "patch": patch.to_dict(),
                 })
             else:
@@ -162,12 +167,34 @@ def build_integration_plan(
                     item["trampoline_offset"], f"{context}.trampoline_offset"
                 )
                 hook = resolve_symbol(symbols, item["hook_symbol"])
+                trampoline = resolve_symbol(symbols, item["trampoline_symbol"])
+                trampoline_start = resolve_symbol(symbols, f"__mips_trampoline_start_{overlay}")
+                trampoline_end = resolve_symbol(symbols, f"__mips_trampoline_end_{overlay}")
                 if base + site_offset != site.address:
                     raise IntegrationError(
                         f"{entry_id}: base + site_offset does not equal site symbol address"
                     )
                 if base + trampoline_offset > 0xFFFFFFFF:
                     raise IntegrationError(f"{entry_id}: trampoline mapping overflows")
+                if base + trampoline_offset != trampoline.address:
+                    raise IntegrationError(
+                        f"{entry_id}: base + trampoline_offset does not equal trampoline symbol address"
+                    )
+                image_end = base + len(image)
+                if (trampoline_start.address > trampoline_end.address
+                        or trampoline_start.address & 3 or trampoline_end.address & 3):
+                    raise IntegrationError(
+                        f"{entry_id}: linker-reserved trampoline section has invalid bounds"
+                    )
+                if not (base <= trampoline_start.address <= trampoline_end.address <= image_end):
+                    raise IntegrationError(
+                        f"{entry_id}: linker-reserved trampoline section is outside the image"
+                    )
+                if not (trampoline_start.address <= trampoline.address
+                        and trampoline.address + 16 <= trampoline_end.address):
+                    raise IntegrationError(
+                        f"{entry_id}: trampoline symbol is outside the linker-reserved section"
+                    )
                 words = item["expected_words"]
                 if not isinstance(words, list) or len(words) != 2:
                     raise IntegrationError(f"{entry_id}: expected_words must contain two words")
@@ -188,6 +215,9 @@ def build_integration_plan(
                     expected_trampoline=trampoline_guard,
                 )
                 plans.append(("hook", patch))
+                analysis = analyze_mips_image(
+                    image, base, start_offset=site_offset, end_offset=site_offset + 8,
+                ).to_dict()
                 occupied.extend([
                     (site_offset, site_offset + 8, entry_id + ":site"),
                     (trampoline_offset, trampoline_offset + 16, entry_id + ":trampoline"),
@@ -196,6 +226,7 @@ def build_integration_plan(
                     "id": entry_id, "type": "hook",
                     "site_symbol": site.name, "site_address": f"0x{site.address:08X}",
                     "hook_symbol": hook.name, "hook_address": f"0x{hook.address:08X}",
+                    "analysis": analysis,
                     "patch": patch.to_dict(),
                 })
         except (SymbolResolverError, JalEngineError, HookEngineError) as exc:

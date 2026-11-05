@@ -1,8 +1,8 @@
 """Generate the V9 hook registry from explicit declarations and verified build inputs.
 
-The generator resolves symbols from the supplied linker map, derives only the
-site file offset from the supplied image base, and reads all byte guards from
-the exact supplied image. Trampoline placement remains an explicit declaration.
+The generator resolves the site, hook, and linker-reserved trampoline symbols
+from the supplied map, derives file offsets from the image base, and reads all
+byte guards from the exact supplied image.
 """
 from __future__ import annotations
 
@@ -57,14 +57,12 @@ def generate_hook_registry(
     hooks: list[dict[str, Any]] = []
     occupied: list[tuple[int, int, str]] = []
     for declaration in declarations:
-        if declaration.trampoline_offset is None:
-            raise HookRegistrationError(
-                f"{declaration.source}:{declaration.line}: declaration "
-                f"{declaration.declaration_id!r} must specify trampoline_offset"
-            )
         try:
             site = resolve_symbol(symbols, declaration.site_symbol)
             hook = resolve_symbol(symbols, declaration.hook_symbol)
+            trampoline = resolve_symbol(symbols, declaration.trampoline_symbol)
+            trampoline_start = resolve_symbol(symbols, f"__mips_trampoline_start_{module}")
+            trampoline_end = resolve_symbol(symbols, f"__mips_trampoline_end_{module}")
         except SymbolResolverError as exc:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: {exc}"
@@ -81,8 +79,27 @@ def generate_hook_registry(
                 f"0x{hook.address:08X} is outside the supplied image mapping"
             )
 
+        if trampoline_start.address > trampoline_end.address:
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: linker-reserved trampoline section has reversed bounds"
+            )
+        if (trampoline_start.address & 3 or trampoline_end.address & 3):
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: linker-reserved trampoline section is not 4-byte aligned"
+            )
+        if not (base_address <= trampoline_start.address <= trampoline_end.address <= image_end):
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: linker-reserved trampoline section is outside the supplied image mapping"
+            )
+        if not (trampoline_start.address <= trampoline.address
+                and trampoline.address + 16 <= trampoline_end.address):
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: trampoline symbol "
+                f"{declaration.trampoline_symbol!r} is outside the linker-reserved section"
+            )
+
         site_offset = site.address - base_address
-        trampoline_offset = declaration.trampoline_offset
+        trampoline_offset = trampoline.address - base_address
         if site_offset & 3 or trampoline_offset & 3:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: derived site or declared trampoline "
@@ -126,6 +143,7 @@ def generate_hook_registry(
             "site_symbol": declaration.site_symbol,
             "site_offset": f"0x{site_offset:X}",
             "hook_symbol": declaration.hook_symbol,
+            "trampoline_symbol": declaration.trampoline_symbol,
             "trampoline_offset": f"0x{trampoline_offset:X}",
             "expected_words": [f"0x{word:08X}" for word in original_words],
             "expected_trampoline": trampoline_guard.hex(),

@@ -12,7 +12,7 @@ from tools.mips.declarations import (
 class HookDeclarationScannerTests(unittest.TestCase):
     def test_scans_explicit_function_definition(self):
         source = '''#include "game.h"
-/* MIPS_AUTO_HOOK: {"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state"} */
+/* MIPS_AUTO_HOOK: {"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state","trampoline_symbol":"crop_pass_trampoline"} */
 s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
 {
     return 0;
@@ -27,13 +27,13 @@ s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
     def test_ignores_marker_text_inside_string_and_unmarked_comment(self):
         source = r'''
 const char *text = "/* MIPS_AUTO_HOOK: {bad json} */";
-/* Example only: MIPS_AUTO_HOOK: {"id":"fake","type":"hook","site_symbol":"fake"} */
+/* Example only: MIPS_AUTO_HOOK: {"id":"fake","type":"hook","site_symbol":"fake","trampoline_symbol":"fake_trampoline"} */
 void ordinary_mod(void) { }
 '''
         self.assertEqual(scan_hook_declarations(source), [])
 
     def test_rejects_line_comment_marker(self):
-        source = '// MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target"}\n'
+        source = '// MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline"}\n'
         with self.assertRaises(HookDeclarationError):
             scan_hook_declarations(source)
 
@@ -45,34 +45,34 @@ void ordinary_mod(void) { }
     def test_rejects_missing_and_unknown_metadata_fields(self):
         for metadata in (
             '{"id":"x","type":"hook"}',
-            '{"id":"x","type":"hook","site_symbol":"target","offset":12}',
+            '{"id":"x","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline","offset":12}',
         ):
             with self.subTest(metadata=metadata):
                 with self.assertRaises(HookDeclarationError):
                     scan_hook_declarations(f"/* MIPS_AUTO_HOOK: {metadata} */\nvoid mod(void) {{ }}")
 
     def test_rejects_prototype_without_definition(self):
-        source = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target"} */\nvoid mod(void);\n'
+        source = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline"} */\nvoid mod(void);\n'
         with self.assertRaises(HookDeclarationError):
             scan_hook_declarations(source)
 
     def test_rejects_duplicate_ids_and_targets(self):
-        one = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target"} */\nvoid first(void) { }\n'
-        duplicate_id = one + '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"other"} */\nvoid second(void) { }\n'
+        one = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline"} */\nvoid first(void) { }\n'
+        duplicate_id = one + '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"other","trampoline_symbol":"other_trampoline"} */\nvoid second(void) { }\n'
         with self.assertRaises(HookDeclarationError):
             scan_hook_declarations(duplicate_id)
-        duplicate_target = one + '/* MIPS_AUTO_HOOK: {"id":"y","type":"hook","site_symbol":"target"} */\nvoid second(void) { }\n'
+        duplicate_target = one + '/* MIPS_AUTO_HOOK: {"id":"y","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline"} */\nvoid second(void) { }\n'
         with self.assertRaises(HookDeclarationError):
             scan_hook_declarations(duplicate_target)
 
     def test_rejects_non_identifier_target(self):
-        source = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target+4"} */\nvoid mod(void) { }\n'
+        source = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target+4","trampoline_symbol":"mod_trampoline"} */\nvoid mod(void) { }\n'
         with self.assertRaises(HookDeclarationError):
             scan_hook_declarations(source)
 
     def test_rejects_control_statement_after_declaration(self):
         source = (
-            '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target"} */\n'
+            '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline"} */\n'
             'if (enabled) { run_mod(); }\n'
         )
         with self.assertRaises(HookDeclarationError):
@@ -82,10 +82,10 @@ void ordinary_mod(void) { }
         with tempfile.TemporaryDirectory() as tmp:
             overlay = Path(tmp) / "11_GF_FARM"
             (overlay / "mod" / "nested").mkdir(parents=True)
-            declaration = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target"} */\nvoid mod(void) { }\n'
+            declaration = '/* MIPS_AUTO_HOOK: {"id":"x","type":"hook","site_symbol":"target","trampoline_symbol":"mod_trampoline"} */\nvoid mod(void) { }\n'
             (overlay / "mod" / "z.c").write_text(declaration, encoding="utf-8")
             (overlay / "mod" / "nested" / "a.c").write_text(
-                '/* MIPS_AUTO_HOOK: {"id":"y","type":"hook","site_symbol":"target2"} */\nvoid mod2(void) { }\n',
+                '/* MIPS_AUTO_HOOK: {"id":"y","type":"hook","site_symbol":"target2","trampoline_symbol":"mod2_trampoline"} */\nvoid mod2(void) { }\n',
                 encoding="utf-8",
             )
             result = discover_hook_declarations(overlay)

@@ -100,7 +100,7 @@ enum FarmHitClass {
 
 static s32 farm_tile_classify(FarmTileQuery *query, s32 unused);
 static s32 farm_villager_find_box(FarmTileQuery *query);
-static s32 farm_tile_state(s16 column, s16 row, s32 mode);
+s32 farm_tile_state(s16 column, s16 row, s32 mode);
 static s32 farm_tile_is_special(FarmTileQuery *query);
 
 /* Cached status record and its low 16 flag bits. */
@@ -999,7 +999,7 @@ s32 farm_probe_steps(FarmProbePosition *request, s32 index) {
 
 /* The state of the tile at column, row: 1 when its rule blocks, 2 for soil or a tile with
  * no rule, 0 when it is open. `mode` picks the greenhouse grid when set, else the field. */
-static s32 farm_tile_state(s16 column, s16 row, s32 mode) {
+s32 farm_tile_state(s16 column, s16 row, s32 mode) {
     FarmFieldTile *record;
     ItemInfo *entry;
     s16 ruleIndex;
