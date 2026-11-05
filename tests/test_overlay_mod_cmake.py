@@ -124,6 +124,7 @@ add_subdirectory(src/overlay/alpha)
 add_subdirectory(src/overlay/beta)
 add_subdirectory(src/overlay/plain)
 add_custom_target(program)
+add_custom_target(afile)
 psx_overlay_mips_integration_targets()
 '''
             (root / "CMakeLists.txt").write_text(cmake_lists)
@@ -146,6 +147,15 @@ psx_overlay_mips_integration_targets()
 
             plain_makefile = build / "CMakeFiles/mips-integrate-plain.dir/build.make"
             self.assertFalse(plain_makefile.exists())
+ 
+            dry_run = subprocess.run(
+                ["cmake", "--build", str(build), "--target", "afile", "--", "-n"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertIn("mips-integrate-alpha", dry_run.stdout)
+            self.assertIn("mips-integrate-beta", dry_run.stdout)
 
 
 if __name__ == "__main__":
