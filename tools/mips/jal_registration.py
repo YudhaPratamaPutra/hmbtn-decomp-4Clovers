@@ -48,10 +48,6 @@ def generate_jal_registry(overlay_dir: str | Path, *, map_path: str | Path,
             raise JalRegistrationError(
                 f"{declaration.declaration_id}: site symbol is outside the supplied image"
             )
-        if not base_address <= target.address <= 0xFFFFFFFF:
-            raise JalRegistrationError(
-                f"{declaration.declaration_id}: target symbol is outside the 32-bit address space"
-            )
         offset = site.address - base_address
         if offset & 3 or offset + 4 > len(image):
             raise JalRegistrationError(
@@ -79,7 +75,7 @@ def generate_jal_registry(overlay_dir: str | Path, *, map_path: str | Path,
             "site_symbol": declaration.site_symbol,
             "file_offset": f"0x{offset:X}",
             "expected_word": f"0x{word:08X}",
-            "expected_target": f"0x{decoded['target']:08X}",
+            "expected_target": f"0x{decoded_target:08X}",
             "target_symbol": declaration.target_symbol,
         })
         occupied.append((offset, offset + 4, declaration.declaration_id))
