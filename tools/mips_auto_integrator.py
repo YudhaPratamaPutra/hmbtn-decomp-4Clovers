@@ -210,6 +210,19 @@ def main() -> None:
                    help="runtime address mapped to byte zero of the image")
     p.add_argument("--output", type=Path,
                    help="registry output path (default: <overlay>/mod/hooks.json)")
+    p = sub.add_parser("jal-discover")
+    p.add_argument("--overlay", required=True, type=Path,
+                   help="overlay directory containing mod/**/*.c")
+    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("jal-register")
+    p.add_argument("--overlay", required=True, type=Path,
+                   help="overlay directory containing mod/**/*.c")
+    p.add_argument("--map", required=True, type=Path, help="matching GNU ld program.map")
+    p.add_argument("--input", required=True, type=Path, help="exact linked overlay image")
+    p.add_argument("--base", required=True, type=_int,
+                   help="runtime address mapped to byte zero of the image")
+    p.add_argument("--output", type=Path,
+                   help="registry output path (default: <overlay>/mod/hooks.json)")
     p = sub.add_parser("symbol-resolve")
     p.add_argument("--map", required=True, type=Path, help="GNU ld program.map")
     p.add_argument("--symbol", action="append", required=True,
@@ -361,6 +374,29 @@ def main() -> None:
         print(f"  Overlay: {registry['module']}")
         print(f"  Registry: {output_path}")
         print(f"  Registered hooks: {len(registry['hooks'])}")
+    elif args.cmd == "jal-discover":
+        from tools.mips.jal_declarations import discover_jal_declarations
+        declarations = discover_jal_declarations(args.overlay)
+        payload = [item.to_dict() for item in declarations]
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"[MIPS AUTO INTEGRATOR] JAL DECLARATIONS - {len(payload)}")
+            for item in payload:
+                print(f"  {item['id']}: {item['site_symbol']} -> {item['target_symbol']} ({item['source']}:{item['line']})")
+    elif args.cmd == "jal-register":
+        from tools.mips.jal_registration import write_jal_registry
+        output_path = args.output or (args.overlay / "mod" / "hooks.json")
+        registry = write_jal_registry(
+            args.overlay, output_path,
+            map_path=args.map, image_path=args.input,
+            base_address=args.base,
+        )
+        jal_count = sum(1 for item in registry["hooks"] if item["type"] == "jal")
+        print("[MIPS AUTO INTEGRATOR] JAL REGISTRATION COMPLETE")
+        print(f"  Overlay: {registry['module']}")
+        print(f"  Registry: {output_path}")
+        print(f"  Registered JAL entries: {jal_count}")
     elif args.cmd == "overlay-discover":
         from tools.mips.discovery import discover_overlays
         overlays = discover_overlays(args.root)
