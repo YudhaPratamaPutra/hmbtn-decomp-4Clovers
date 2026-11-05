@@ -25,6 +25,6 @@ __all__ = [
     "ModDiscoveryError", "ModInventory", "discover_mod_sources",
     "SymbolDefinition", "SymbolResolution", "SymbolResolverError",
     "load_linker_map", "parse_linker_map", "resolve_symbol", "resolve_symbols",
-    "IntegrationError", "IntegrationPlan", "build_integration_plan", "apply_integration_plan",
+    "IntegrationError", "IntegrationPlan", "build_integration_plan", "apply_integration_plan",\n    "HookRegistrationError", "generate_hook_registry", "write_hook_registry",
     "ValidationError", "ValidationReport", "validate_integrated_image",
 ]
