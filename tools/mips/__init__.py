@@ -11,7 +11,7 @@ from .hook import (
 from .discovery import ModDiscoveryError, ModInventory, discover_mod_sources
 from .integration import IntegrationError, IntegrationPlan, build_integration_plan, apply_integration_plan
 from .validation import ValidationError, ValidationReport, validate_integrated_image
-from .symbols import (
+from .registration import (\n    HookRegistrationError, generate_hook_registry, write_hook_registry,\n)\nfrom .symbols import (
     SymbolDefinition, SymbolResolution, SymbolResolverError,
     load_linker_map, parse_linker_map, resolve_symbol, resolve_symbols,
 )
