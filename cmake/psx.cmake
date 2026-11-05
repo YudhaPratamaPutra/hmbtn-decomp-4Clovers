@@ -415,5 +415,8 @@ function(psx_overlay_mips_integration_targets)
             COMMENT "MIPS Auto Integrator: complete per-overlay pipeline for ${overlay}"
             VERBATIM)
         add_dependencies(mips-integrate-${overlay} program)
+        if(TARGET afile)
+            add_dependencies(afile mips-integrate-${overlay})
+        endif()
     endforeach()
 endfunction()
