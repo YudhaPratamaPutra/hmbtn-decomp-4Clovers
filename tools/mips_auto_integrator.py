@@ -154,6 +154,13 @@ def main() -> None:
     p = sub.add_parser("jump-decode")
     p.add_argument("--pc", required=True, type=_int)
     p.add_argument("--word", required=True, type=_int)
+    p = sub.add_parser("mips-analyze")
+    p.add_argument("--input", required=True, type=Path)
+    p.add_argument("--base", required=True, type=_int,
+                   help="runtime address mapped to byte zero of input")
+    p.add_argument("--start", type=_int, default=0)
+    p.add_argument("--end", type=_int)
+    p.add_argument("--json", action="store_true")
     p = sub.add_parser("jal-scan")
     p.add_argument("--input", required=True, type=Path)
     p.add_argument("--base", required=True, type=_int,
@@ -248,6 +255,13 @@ def main() -> None:
         print(f"0x{encode_jal(args.pc, args.target):08X}")
     elif args.cmd == "jump-decode":
         print(json.dumps(decode_jump(args.pc, args.word), indent=2))
+    elif args.cmd == "mips-analyze":
+        from tools.mips.analysis import analyze_mips_image
+        report = analyze_mips_image(
+            args.input.read_bytes(), args.base,
+            start_offset=args.start, end_offset=args.end,
+        )
+        print(json.dumps(report.to_dict(), indent=2))
     elif args.cmd == "jal-scan":
         from tools.mips.jal import scan_jal
         found = scan_jal(args.input.read_bytes(), args.base,
