@@ -274,6 +274,10 @@ def main() -> None:
         from tools.mips.integration import (
             apply_integration_plan, build_integration_plan,
         )
+        if args.cmd == "integrate-apply":
+            print("[MIPS AUTO INTEGRATOR] INTEGRATION START")
+        elif args.cmd == "integrate-validate":
+            print("[MIPS AUTO INTEGRATOR] VALIDATION START")
         image = args.input.read_bytes()
         plan = build_integration_plan(
             image, base_address=args.base, overlay=args.overlay,
@@ -284,36 +288,51 @@ def main() -> None:
         elif args.cmd == "integrate-validate":
             from tools.mips.validation import validate_integrated_image
             report = validate_integrated_image(image, args.patched.read_bytes(), plan)
-            print(json.dumps(report.to_dict(), indent=2))
+            print("[MIPS AUTO INTEGRATOR] VALIDATION PASS")
+            print(f"  Overlay: {plan.overlay}")
+            print(f"  Registry entries: {len(plan.entries)}")
+            print(f"  Image size: {report.image_size} bytes")
+            print(f"  Authorized ranges: {len(report.authorized_ranges)}")
+            print(f"  Changed ranges: {len(report.changed_ranges)}")
+            print(f"  Original SHA-256: {report.original_sha256}")
+            print(f"  Output SHA-256:   {report.output_sha256}")
         else:
+            print(f"[MIPS AUTO INTEGRATOR] PLAN READY - {len(plan.entries)} registry entries")
             output = apply_integration_plan(
                 image, plan, base_address=args.base, overlay=args.overlay,
                 registry_path=args.registry, map_path=args.map,
             )
             args.output.write_bytes(output)
-            print(json.dumps({
-                "output": str(args.output),
-                "input_sha256": plan.image_sha256,
-                "output_sha256": __import__("hashlib").sha256(output).hexdigest(),
-                "entry_count": len(plan.entries),
-            }, indent=2))
+            output_sha256 = __import__("hashlib").sha256(output).hexdigest()
+            print("[MIPS AUTO INTEGRATOR] INTEGRATION COMPLETE")
+            print(f"  Overlay: {plan.overlay}")
+            print(f"  Registry entries: {len(plan.entries)}")
+            print(f"  Output: {args.output}")
+            print(f"  Input SHA-256:  {plan.image_sha256}")
+            print(f"  Output SHA-256: {output_sha256}")
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
+        if not args.json:
+            print(f"[MIPS AUTO INTEGRATOR] DISCOVERY START - {args.overlay.name}")
         inventory = discover_mod_sources(args.overlay)
         if args.json:
             print(json.dumps(inventory.to_dict(), indent=2))
         else:
-            print(f"Overlay: {inventory.overlay}")
-            print(f"C sources: {len(inventory.sources)}")
+            print(f"[MIPS AUTO INTEGRATOR] OVERLAY - {inventory.overlay}")
+            print("[MIPS AUTO INTEGRATOR] DISCOVERY COMPLETE")
+            print(f"  C sources: {len(inventory.sources)}")
             for source in inventory.sources:
-                print(f"  {source}")
-            print(f"Headers: {len(inventory.headers)}")
+                print(f"    {source}")
+            print(f"  Headers: {len(inventory.headers)}")
             for header in inventory.headers:
-                print(f"  {header}")
+                print(f"    {header}")
             if inventory.registry_path:
-                print(f"Hook registry: {inventory.registry_path} ({inventory.registry_hooks} entries)")
+                print(
+                    f"  Hook registry: {inventory.registry_path} "
+                    f"({inventory.registry_hooks} entries)"
+                )
             else:
-                print("Hook registry: not present")
+                print("  Hook registry: not present")
 
 
 if __name__ == "__main__":

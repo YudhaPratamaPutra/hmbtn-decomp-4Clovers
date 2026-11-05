@@ -64,6 +64,9 @@ psx_program()
 # without replacing the original overlay or A_FILE.
 add_custom_target(mips-integrate-farm
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+        mod-discover
+        --overlay ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
         integrate-apply
         --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
         --output ${CMAKE_BINARY_DIR}/11_GF_FARM.mod.bin
@@ -79,7 +82,7 @@ add_custom_target(mips-integrate-farm
         --overlay 11_GF_FARM
         --registry ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
         --map ${CMAKE_BINARY_DIR}/program.map
-    COMMENT "Integrating and validating FARM mod sidecar image"
+    COMMENT "MIPS Auto Integrator: discovery, integration, and validation for FARM"
     VERBATIM)
 add_dependencies(mips-integrate-farm program)
 
