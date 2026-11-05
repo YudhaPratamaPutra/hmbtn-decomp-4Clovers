@@ -102,7 +102,7 @@ declarations in the discovered mod C sources. Existing explicit JAL entries
 are preserved by the registry writer. Do not hand-edit generated hook entries;
 change the source declaration and rebuild the target instead.
 
-The declaration names a global 16-byte buffer placed in `.mips_trampoline.11_GF_FARM`. The linker script brackets that input section with `__mips_trampoline_start` and `__mips_trampoline_end`; the registry generator resolves the named buffer symbol rather than accepting a guessed file offset. The target writes a sidecar patched image and
+The declaration names a global 16-byte buffer placed in `.mips_trampoline.11_GF_FARM`. The linker script brackets that input section with `__mips_trampoline_start_11_GF_FARM` and `__mips_trampoline_end_11_GF_FARM`; the registry generator resolves the named buffer symbol rather than accepting a guessed file offset. The target writes a sidecar patched image and
 does not replace the original overlay or A_FILE.
 
 ## Hook registry
