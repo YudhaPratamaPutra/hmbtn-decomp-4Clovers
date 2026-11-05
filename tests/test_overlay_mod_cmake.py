@@ -98,12 +98,12 @@ add_subdirectory(src/overlay/beta)
             for overlay in ("alpha", "beta", "plain"):
                 directory = root / "src/overlay" / overlay
                 directory.mkdir(parents=True)
-                (directory / "header.c").write_text("void overlay_header(void) {}\\n")
+                (directory / "header.c").write_text("void overlay_header(void) {}\n")
                 if overlay != "plain":
                     (directory / "mod").mkdir()
 
                 (directory / "CMakeLists.txt").write_text(
-                    f"psx_overlay({overlay} FILE {overlay}.bin REGION low SOURCES header.c)\\n"
+                    f"psx_overlay({overlay} FILE {overlay}.bin REGION low SOURCES header.c)\n"
                 )
 
             cmake_lists = f'''cmake_minimum_required(VERSION 3.20)
