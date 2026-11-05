@@ -191,6 +191,11 @@ def main() -> None:
                    help="overlay directory containing mod/")
     p.add_argument("--json", action="store_true",
                    help="emit machine-readable JSON")
+    p = sub.add_parser("hook-discover")
+    p.add_argument("--overlay", required=True, type=Path,
+                   help="overlay directory containing mod/**/*.c")
+    p.add_argument("--json", action="store_true",
+                   help="emit machine-readable hook declarations")
     p = sub.add_parser("symbol-resolve")
     p.add_argument("--map", required=True, type=Path, help="GNU ld program.map")
     p.add_argument("--symbol", action="append", required=True,
@@ -317,6 +322,19 @@ def main() -> None:
             print(f"  Output: {args.output}")
             print(f"  Input SHA-256:  {plan.image_sha256}")
             print(f"  Output SHA-256: {output_sha256}")
+    elif args.cmd == "hook-discover":
+        from tools.mips.declarations import discover_hook_declarations
+        declarations = discover_hook_declarations(args.overlay)
+        payload = [item.to_dict() for item in declarations]
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"[MIPS AUTO INTEGRATOR] HOOK DECLARATIONS - {len(payload)}")
+            for item in payload:
+                print(
+                    f"  {item['id']}: {item['hook_symbol']} -> "
+                    f"{item['site_symbol']} ({item['source']}:{item['line']})"
+                )
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
         if not args.json:
