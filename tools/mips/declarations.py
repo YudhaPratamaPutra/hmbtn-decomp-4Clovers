@@ -100,7 +100,10 @@ def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
             continue
         if source.startswith("//", i):
             end = source.find("\n", i)
-            i = len(source) if end < 0 else end
+            end = len(source) if end < 0 else end
+            if _MARKER in source[i:end]:
+                raise HookDeclarationError("MIPS_AUTO_HOOK declarations must use block comments")
+            i = end
             continue
         if not source.startswith("/*", i):
             i += 1
@@ -113,7 +116,7 @@ def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
         end = close + 2
         comment = source[start:end]
         i = end
-        if _MARKER not in comment:
+        if not comment.lstrip().startswith("/*" + _MARKER):
             continue
         if comment.count(_MARKER) != 1:
             raise HookDeclarationError("each declaration comment must contain exactly one marker")
