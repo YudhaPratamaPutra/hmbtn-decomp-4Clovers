@@ -12,10 +12,10 @@ class HookInputTypeTests(unittest.TestCase):
             "trampoline_offset": 32,
             "trampoline_pc": 0x80010020,
             "expected_original_words": (0, 0),
-            "expected_trampoline": b"\\x00" * 16,
+            "expected_trampoline": b"\x00" * 16,
         }
         args.update(overrides)
-        return plan_hook_patch(b"\\x00" * 64, **args)
+        return plan_hook_patch(b"\x00" * 64, **args)
 
     def test_rejects_boolean_addresses(self):
         for field in ("site_pc", "hook_pc", "trampoline_pc"):
