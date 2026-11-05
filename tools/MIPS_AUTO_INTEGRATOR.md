@@ -304,6 +304,40 @@ patches automatically. The scanner does not infer code/data boundaries, so
 callers must provide a verified range when analyzing an image containing data.
 
 
+
+## Stage 10 — HOOK Declaration Discovery and Registration
+
+The `hook-discover` command scans `mod/**/*.c` for explicit
+`MIPS_AUTO_HOOK` block-comment declarations. Each declaration identifies
+its exact `site_symbol` and linker-reserved `trampoline_symbol`; the
+function definition immediately following the declaration supplies the
+mod hook function symbol.
+
+The `hook-register` command resolves those symbols and the overlay-specific
+`__mips_trampoline_start_<overlay>` / `__mips_trampoline_end_<overlay>`
+bounds from the supplied linker map. It derives file offsets from the
+explicit image base and reads original instruction and trampoline guards
+from the exact linked overlay image. It writes the resulting HOOK entries
+to the schema-v1 registry while preserving existing JAL entries.
+
+Example:
+
+```sh
+python3 tools/mips_auto_integrator.py hook-discover \
+  --overlay src/overlay/11_GF_FARM --json
+
+python3 tools/mips_auto_integrator.py hook-register \
+  --overlay src/overlay/11_GF_FARM \
+  --map build/program.map --input build/11_GF_FARM.bin \
+  --base 0x800B7E20
+```
+
+The generated registry is consumed by the existing integration planner.
+Discovery never chooses a site from a scan result, and registration does not
+patch the image. A HOOK declaration is accepted only when its symbols,
+reserved trampoline range, source image bytes, and non-overlapping patch
+ranges are all represented by the supplied build inputs.
+
 ## Stage 8 — CMake Build Integration
 
 The root CMake configuration exposes an explicit `mips-integrate-farm`
