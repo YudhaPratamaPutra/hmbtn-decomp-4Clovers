@@ -186,6 +186,11 @@ def main() -> None:
         p.add_argument("--word1", required=True, type=_int)
         p.add_argument("--expected-trampoline", required=True,
                        help="exact 16-byte trampoline storage as 32 hex characters")
+    p = sub.add_parser("overlay-discover")
+    p.add_argument("--root", required=True, type=Path,
+                   help="src/overlay directory containing overlay subdirectories")
+    p.add_argument("--json", action="store_true",
+                   help="emit machine-readable overlay inventory")
     p = sub.add_parser("mod-discover")
     p.add_argument("--overlay", required=True, type=Path,
                    help="overlay directory containing mod/")
@@ -356,6 +361,19 @@ def main() -> None:
         print(f"  Overlay: {registry['module']}")
         print(f"  Registry: {output_path}")
         print(f"  Registered hooks: {len(registry['hooks'])}")
+    elif args.cmd == "overlay-discover":
+        from tools.mips.discovery import discover_overlays
+        overlays = discover_overlays(args.root)
+        payload = [item.to_dict() for item in overlays]
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"[MIPS AUTO INTEGRATOR] OVERLAY DISCOVERY - {len(payload)}")
+            for item in payload:
+                print(
+                    f"  {item['overlay']}: mod={item['has_mod_directory']}, "
+                    f"C={item['source_count']}, H={item['header_count']}"
+                )
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
         if not args.json:
