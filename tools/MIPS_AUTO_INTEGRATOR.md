@@ -84,6 +84,33 @@ The hexadecimal trampoline guard must represent exactly 16 bytes. The example
 addresses and bytes above are illustrative CLI syntax, not verified game
 addresses or free storage.
 
+## Stage 4 — Mod Discovery
+
+The inventory API is in `tools/mips/discovery.py`. It recursively inventories
+`mod/**/*.c` and `mod/**/*.h`, sorts paths deterministically, and validates
+the existing version-1 `hooks.json` envelope (schema version, overlay name,
+and hooks array). It reports the number of registered hooks but does not execute
+or apply registry entries.
+
+CMake's `psx_overlay_mod_sources()` now uses recursive, configure-dependent
+discovery. Nested mod source files are compiled using their relative paths, so
+the resulting object paths remain distinct. FARM's original source list remains
+in its existing order; discovered mod sources are appended after `farm_vars.c`.
+There are currently no actual mod C source files in the FARM mod directory, so
+the recursive discovery change adds no new game objects by itself.
+
+Run an inventory:
+
+```sh
+python3 tools/mips_auto_integrator.py mod-discover \
+  --overlay src/overlay/11_GF_FARM --json
+```
+
+The discovery tool rejects a missing mod directory, malformed or incompatible
+registry metadata, and symlinked source/header files. It does not determine
+whether a mod function is safe to link into the original overlay, reserve memory,
+resolve symbols, or alter game binaries.
+
 ## Remaining integration work
 
 The three engines are still explicit-address tools. Linker-map symbol resolution,
