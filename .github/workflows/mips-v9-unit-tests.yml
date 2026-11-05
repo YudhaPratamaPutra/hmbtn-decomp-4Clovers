@@ -8,6 +8,7 @@ on:
       - "tools/afile.py"
       - "CMakeLists.txt"
       - "tests/**"
+      - "tests/test_afile_integrated_pack.py"
       - "cmake/overlay.ld.in"
       - "cmake/psx.cmake"
       - "cmake/disc.cmake"
