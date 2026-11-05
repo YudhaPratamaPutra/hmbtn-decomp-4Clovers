@@ -42,6 +42,9 @@ Declare a hook directly above the mod function definition with a block comment:
 
 ```c
 /* MIPS_AUTO_HOOK: {"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state","trampoline_symbol":"crop_pass_trampoline"} */
+#include "mips_auto_hook.h"
+MIPS_AUTO_HOOK_TRAMPOLINE(crop_pass_trampoline);
+
 s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
 {
     /* mod implementation */
@@ -52,7 +55,7 @@ The scanner reads these explicit fields:
 - `id`: unique declaration identifier within the overlay.
 - `type`: currently must be `hook`.
 - `site_symbol`: exact original-game function symbol in the linker map.
-- `trampoline_symbol`: exact global symbol of a 16-byte reserved buffer in the linker-owned `.mips_trampoline` section.
+- `trampoline_symbol`: exact global symbol of a 16-byte reserved buffer in the linker-owned `.mips_trampoline` section. Declare its storage with `MIPS_AUTO_HOOK_TRAMPOLINE(symbol);` from `mips_auto_hook.h`.
 - The immediately following C function definition supplies `hook_symbol`.
 
 Run the scanner:
@@ -79,9 +82,7 @@ python3 tools/mips_auto_integrator.py hook-register \\
 
 The command writes `mod/hooks.json` by default. It fails closed for missing or
 ambiguous symbols, invalid instruction pairs, out-of-image offsets, and
-overlapping patch regions. `trampoline_offset` remains a deliberate, explicit
-choice: the generator checks the bytes found there but cannot prove that the
-region is unused or safe. It does not modify the game image.
+overlapping patch regions. The registration generator requires the named buffer to fall entirely between `__mips_trampoline_start` and `__mips_trampoline_end` in the linker map. It does not modify the game image.
 
 ## CMake-driven hook registration (V9.4)
 
