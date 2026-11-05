@@ -46,30 +46,30 @@ class TrampolineSectionTests(unittest.TestCase):
             script = root / "fixture.ld"
             elf = root / "fixture.elf"
             farm_source.write_text(
-                '.section .mips_trampoline.11_GF_FARM,"aw",@progbits\\n'
-                '.globl farm_trampoline\\nfarm_trampoline:\\n'
-                '.zero 16\\n',
+                '.section .mips_trampoline.11_GF_FARM,"aw",@progbits\n'
+                '.globl farm_trampoline\nfarm_trampoline:\n'
+                '.zero 16\n',
                 encoding="utf-8",
             )
             other_source.write_text(
-                '.section .mips_trampoline.12_OTHER,"aw",@progbits\\n'
-                '.globl other_trampoline\\nother_trampoline:\\n'
-                '.zero 16\\n',
+                '.section .mips_trampoline.12_OTHER,"aw",@progbits\n'
+                '.globl other_trampoline\nother_trampoline:\n'
+                '.zero 16\n',
                 encoding="utf-8",
             )
             script.write_text(
-                'SECTIONS {\\n'
-                '  .11_GF_FARM : {\\n'
-                '    __mips_trampoline_start_11_GF_FARM = .;\\n'
-                '    KEEP(*(.mips_trampoline.11_GF_FARM))\\n'
-                '    __mips_trampoline_end_11_GF_FARM = .;\\n'
-                '  }\\n'
-                '  .12_OTHER : {\\n'
-                '    __mips_trampoline_start_12_OTHER = .;\\n'
-                '    KEEP(*(.mips_trampoline.12_OTHER))\\n'
-                '    __mips_trampoline_end_12_OTHER = .;\\n'
-                '  }\\n'
-                '}\\n',
+                'SECTIONS {\n'
+                '  .11_GF_FARM : {\n'
+                '    __mips_trampoline_start_11_GF_FARM = .;\n'
+                '    KEEP(*(.mips_trampoline.11_GF_FARM))\n'
+                '    __mips_trampoline_end_11_GF_FARM = .;\n'
+                '  }\n'
+                '  .12_OTHER : {\n'
+                '    __mips_trampoline_start_12_OTHER = .;\n'
+                '    KEEP(*(.mips_trampoline.12_OTHER))\n'
+                '    __mips_trampoline_end_12_OTHER = .;\n'
+                '  }\n'
+                '}\n',
                 encoding="utf-8",
             )
             subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
@@ -85,9 +85,19 @@ class TrampolineSectionTests(unittest.TestCase):
             self.assertIn("__mips_trampoline_end_11_GF_FARM", symbols)
             self.assertIn("__mips_trampoline_start_12_OTHER", symbols)
             self.assertIn("__mips_trampoline_end_12_OTHER", symbols)
-            self.assertIn("farm_trampoline", symbols)
-            self.assertIn("other_trampoline", symbols)
-            self.assertNotIn("farm_trampoline", symbols.split("__mips_trampoline_start_12_OTHER")[0].split(".12_OTHER")[0])
+            symbol_addresses = {}
+            for line in symbols.splitlines():
+                fields = line.split()
+                if len(fields) == 3:
+                    symbol_addresses[fields[2]] = int(fields[0], 16)
+            farm_start = symbol_addresses["__mips_trampoline_start_11_GF_FARM"]
+            farm_end = symbol_addresses["__mips_trampoline_end_11_GF_FARM"]
+            other_start = symbol_addresses["__mips_trampoline_start_12_OTHER"]
+            other_end = symbol_addresses["__mips_trampoline_end_12_OTHER"]
+            self.assertEqual(farm_end - farm_start, 16)
+            self.assertEqual(other_end - other_start, 16)
+            self.assertTrue(farm_start <= symbol_addresses["farm_trampoline"] < farm_end)
+            self.assertTrue(other_start <= symbol_addresses["other_trampoline"] < other_end)
 
     def test_maspsx_preserves_trampoline_section_and_storage_directives(self):
         source = [
