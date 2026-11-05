@@ -157,6 +157,39 @@ def write_hook_registry(
         base_address=base_address,
     )
     destination = Path(output_path)
+    if destination.exists():
+        try:
+            existing = json.loads(destination.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise HookRegistrationError(
+                f"cannot read existing registry {destination}: {exc}"
+            ) from exc
+        if (not isinstance(existing, dict)
+                or existing.get("schema_version") != 1
+                or existing.get("module") != registry["module"]
+                or not isinstance(existing.get("hooks"), list)):
+            raise HookRegistrationError(
+                f"existing registry {destination} has an incompatible schema or module"
+            )
+        preserved_jal = []
+        for index, entry in enumerate(existing["hooks"]):
+            if not isinstance(entry, dict):
+                raise HookRegistrationError(
+                    f"existing registry hooks[{index}] must be an object"
+                )
+            if entry.get("type") == "jal":
+                preserved_jal.append(entry)
+            elif entry.get("type") != "hook":
+                raise HookRegistrationError(
+                    f"existing registry hooks[{index}] has an unsupported type"
+                )
+        generated_ids = {entry["id"] for entry in registry["hooks"]}
+        for entry in preserved_jal:
+            if entry.get("id") in generated_ids:
+                raise HookRegistrationError(
+                    f"generated hook id conflicts with existing JAL id: {entry.get('id')}"
+                )
+        registry["hooks"] = preserved_jal + registry["hooks"]
     destination.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(registry, indent=2) + "\n"
     temporary = destination.with_name(destination.name + ".tmp")
