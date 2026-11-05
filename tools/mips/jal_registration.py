@@ -6,7 +6,7 @@ import struct
 from pathlib import Path
 from typing import Any
 
-from .jal import decode_jal
+from .jal import JalEngineError, _decode_jal
 from .jal_declarations import JalDeclarationError, discover_jal_declarations
 from .symbols import SymbolResolverError, load_linker_map, resolve_symbol
 
@@ -64,13 +64,13 @@ def generate_jal_registry(overlay_dir: str | Path, *, map_path: str | Path,
                 f"(found 0x{word:08X})"
             )
         try:
-            decoded = decode_jal(site.address, word)
-        except ValueError as exc:
+            decoded_target = _decode_jal(site.address, word)
+        except JalEngineError as exc:
             raise JalRegistrationError(f"{declaration.declaration_id}: {exc}") from exc
-        if decoded["target"] != target.address:
+        if decoded_target != target.address:
             raise JalRegistrationError(
                 f"{declaration.declaration_id}: encoded JAL target "
-                f"0x{decoded['target']:08X} does not match target symbol "
+                f"0x{decoded_target:08X} does not match target symbol "
                 f"0x{target.address:08X}"
             )
         entries.append({
