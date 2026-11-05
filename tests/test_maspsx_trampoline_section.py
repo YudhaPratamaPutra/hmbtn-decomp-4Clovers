@@ -43,6 +43,10 @@ class TrampolineSectionTests(unittest.TestCase):
             other_source = root / "other.s"
             farm_object = root / "farm.o"
             other_object = root / "other.o"
+            farm_header_source = root / "farm_header.s"
+            other_header_source = root / "other_header.s"
+            farm_header_object = root / "farm_header.o"
+            other_header_object = root / "other_header.o"
             script = root / "fixture.ld"
             elf = root / "fixture.elf"
             farm_source.write_text(
@@ -57,6 +61,8 @@ class TrampolineSectionTests(unittest.TestCase):
                 '.zero 16\n',
                 encoding="utf-8",
             )
+            farm_header_source.write_text('.data\\n.long 0\\n', encoding="utf-8")
+            other_header_source.write_text('.data\\n.long 0\\n', encoding="utf-8")
             template = Path("cmake/overlay.ld.in").read_text(encoding="utf-8")
 
             def overlay_block(name, object_name):
@@ -86,9 +92,14 @@ class TrampolineSectionTests(unittest.TestCase):
                            check=True, capture_output=True, text=True)
             subprocess.run([assembler, str(other_source), "-o", str(other_object)],
                            check=True, capture_output=True, text=True)
+            subprocess.run([assembler, str(farm_header_source), "-o", str(farm_header_object)],
+                           check=True, capture_output=True, text=True)
+            subprocess.run([assembler, str(other_header_source), "-o", str(other_header_object)],
+                           check=True, capture_output=True, text=True)
             link_result = subprocess.run(
-                [linker, "-T", str(script), "-Map", str(root / "fixture.map"),
-                 "-o", str(elf), str(farm_object), str(other_object)],
+                [linker, "--no-check-sections", "-T", str(script), "-Map", str(root / "fixture.map"),
+                 "-o", str(elf), str(farm_header_object), str(farm_object),
+                 str(other_header_object), str(other_object)],
                 check=False, capture_output=True, text=True, cwd=root,
             )
             self.assertEqual(link_result.returncode, 0, link_result.stderr)
