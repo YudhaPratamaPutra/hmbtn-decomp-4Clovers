@@ -72,9 +72,9 @@ class IntegrationPipelineTests(unittest.TestCase):
         self.assertNotEqual(patched[0x30:0x40], bytes(image[0x30:0x40]))
 
     def test_hook_trampoline_offset_must_match_linker_symbol(self):
-        image = bytearray(b"\\xAA" * 0x60)
+        image = bytearray(b"\xAA" * 0x60)
         struct.pack_into("<2I", image, 0x10, 0x27BDFFE8, 0xAFBF0010)
-        image[0x30:0x40] = b"\\xCC" * 16
+        image[0x30:0x40] = b"\xCC" * 16
         self.write_inputs([{
             "id": "farm-entry", "type": "hook", "site_symbol": "farm_entry",
             "site_offset": "0x10", "hook_symbol": "farm_mod_entry",
