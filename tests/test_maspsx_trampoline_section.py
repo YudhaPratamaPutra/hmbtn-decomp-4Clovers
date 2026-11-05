@@ -85,9 +85,12 @@ class TrampolineSectionTests(unittest.TestCase):
                            check=True, capture_output=True, text=True)
             subprocess.run([assembler, str(other_source), "-o", str(other_object)],
                            check=True, capture_output=True, text=True)
-            subprocess.run([linker, "-T", str(script), "-Map", str(root / "fixture.map"),
-                            "-o", str(elf), str(farm_object), str(other_object)],
-                           check=True, capture_output=True, text=True)
+            link_result = subprocess.run(
+                [linker, "-T", str(script), "-Map", str(root / "fixture.map"),
+                 "-o", str(elf), str(farm_object), str(other_object)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertEqual(link_result.returncode, 0, link_result.stderr)
             symbols = subprocess.run([nm, "-n", str(elf)], check=True,
                                      capture_output=True, text=True).stdout
             self.assertIn("__mips_trampoline_start_11_GF_FARM", symbols)
