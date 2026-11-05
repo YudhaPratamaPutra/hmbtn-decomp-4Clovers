@@ -1,4 +1,7 @@
 # 11_GF_FARM, an overlay (11_GF_FARM.bin in A_FILE). The source list is in link order.
+# Mod C files are discovered at configure time; adding/removing a file triggers CMake reconfigure.
+file(GLOB farm_mod_sources CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/mod/*.c)
 
 psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
     SOURCES
@@ -53,6 +56,7 @@ psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
         field/fishing.c
         field/field_item_requests.c
         farm_vars.c
+        ${farm_mod_sources}
     # Filler the linker leaves in the alignment gap after a file's .data,
     # which no object holds.
     GAP menu/house.c .data 0x33 0x32
