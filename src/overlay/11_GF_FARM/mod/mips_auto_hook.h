@@ -7,6 +7,6 @@
  */
 #define MIPS_AUTO_HOOK_TRAMPOLINE(symbol) \
     unsigned int symbol[4] \
-        __attribute__((section(".mips_trampoline"), aligned(4))) = {0, 0, 0, 0}
+        __attribute__((section(".mips_trampoline.11_GF_FARM"), aligned(4))) = {0, 0, 0, 0}
 
 #endif
