@@ -8,6 +8,8 @@ from tools.mips.registration import (
     generate_hook_registry,
     write_hook_registry,
 )
+from tools.mips.integration import build_integration_plan, apply_integration_plan
+from tools.mips.validation import validate_integrated_image
 
 
 class HookRegistrationTests(unittest.TestCase):
@@ -130,6 +132,41 @@ class HookRegistrationTests(unittest.TestCase):
                 self.overlay, map_path=self.map_path, image_path=self.image_path,
                 base_address=self.base,
             )
+
+    def test_declaration_flows_through_registry_plan_apply_and_validation(self):
+        self._source(
+            '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
+            '"trampoline_symbol":"crop_pass_trampoline"}'
+        )
+        registry_path = self.overlay / "mod" / "hooks.json"
+        first = write_hook_registry(
+            self.overlay, registry_path, map_path=self.map_path,
+            image_path=self.image_path, base_address=self.base,
+        )
+        first_bytes = registry_path.read_bytes()
+        second = write_hook_registry(
+            self.overlay, registry_path, map_path=self.map_path,
+            image_path=self.image_path, base_address=self.base,
+        )
+        self.assertEqual(first, second)
+        self.assertEqual(registry_path.read_bytes(), first_bytes)
+
+        original = self.image_path.read_bytes()
+        plan = build_integration_plan(
+            original, base_address=self.base, overlay="11_GF_FARM",
+            registry_path=registry_path, map_path=self.map_path,
+        )
+        self.assertEqual(len(plan.entries), 1)
+        self.assertEqual(plan.entries[0]["id"], "crop-pass")
+        patched = apply_integration_plan(
+            original, plan, base_address=self.base, overlay="11_GF_FARM",
+            registry_path=registry_path, map_path=self.map_path,
+        )
+        report = validate_integrated_image(original, patched, plan)
+        self.assertEqual(report.image_size, len(original))
+        self.assertTrue(report.changed_ranges)
+        self.assertNotEqual(patched[16:24], original[16:24])
+        self.assertNotEqual(patched[96:112], original[96:112])
 
     def test_writes_registry_only_after_successful_generation(self):
         self._source(
