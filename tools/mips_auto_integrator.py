@@ -202,6 +202,8 @@ def main() -> None:
         p.add_argument("--map", required=True, type=Path, help="matching GNU ld map")
         if command == "integrate-apply":
             p.add_argument("--output", required=True, type=Path)
+        if command == "integrate-validate":
+            p.add_argument("--patched", required=True, type=Path, help="patched image to validate")
     args = parser.parse_args()
     if args.cmd == "jal-encode":
         print(f"0x{encode_jal(args.pc, args.target):08X}")
@@ -279,6 +281,10 @@ def main() -> None:
         )
         if args.cmd == "integrate-plan":
             print(json.dumps(plan.to_dict(), indent=2))
+        elif args.cmd == "integrate-validate":
+            from tools.mips.validation import validate_integrated_image
+            report = validate_integrated_image(image, args.patched.read_bytes(), plan)
+            print(json.dumps(report.to_dict(), indent=2))
         else:
             output = apply_integration_plan(
                 image, plan, base_address=args.base, overlay=args.overlay,
