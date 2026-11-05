@@ -76,9 +76,9 @@ class TrampolineSectionTests(unittest.TestCase):
                 return block
 
             script.write_text(
-                "MEMORY { overlay_low (rwx) : ORIGIN = 0x80010000, LENGTH = 0x1000 }\n"
-                + overlay_block("11_GF_FARM", str(farm_object))
-                + overlay_block("12_OTHER", str(other_object)),
+                "overlay_low = 0x80010000;\n"
+                + overlay_block("11_GF_FARM", "farm.o")
+                + overlay_block("12_OTHER", "other.o"),
                 encoding="utf-8",
             )
             subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
@@ -88,7 +88,7 @@ class TrampolineSectionTests(unittest.TestCase):
             link_result = subprocess.run(
                 [linker, "-T", str(script), "-Map", str(root / "fixture.map"),
                  "-o", str(elf), str(farm_object), str(other_object)],
-                check=False, capture_output=True, text=True,
+                check=False, capture_output=True, text=True, cwd=root,
             )
             self.assertEqual(link_result.returncode, 0, link_result.stderr)
             symbols = subprocess.run([nm, "-n", str(elf)], check=True,
