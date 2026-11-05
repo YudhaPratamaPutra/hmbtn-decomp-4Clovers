@@ -57,14 +57,10 @@ def generate_hook_registry(
     hooks: list[dict[str, Any]] = []
     occupied: list[tuple[int, int, str]] = []
     for declaration in declarations:
-        if declaration.trampoline_offset is None:
-            raise HookRegistrationError(
-                f"{declaration.source}:{declaration.line}: declaration "
-                f"{declaration.declaration_id!r} must specify trampoline_offset"
-            )
         try:
             site = resolve_symbol(symbols, declaration.site_symbol)
             hook = resolve_symbol(symbols, declaration.hook_symbol)
+            trampoline = resolve_symbol(symbols, declaration.trampoline_symbol)
         except SymbolResolverError as exc:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: {exc}"
@@ -82,7 +78,7 @@ def generate_hook_registry(
             )
 
         site_offset = site.address - base_address
-        trampoline_offset = declaration.trampoline_offset
+        trampoline_offset = trampoline.address - base_address
         if site_offset & 3 or trampoline_offset & 3:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: derived site or declared trampoline "
@@ -126,6 +122,7 @@ def generate_hook_registry(
             "site_symbol": declaration.site_symbol,
             "site_offset": f"0x{site_offset:X}",
             "hook_symbol": declaration.hook_symbol,
+            "trampoline_symbol": declaration.trampoline_symbol,
             "trampoline_offset": f"0x{trampoline_offset:X}",
             "expected_words": [f"0x{word:08X}" for word in original_words],
             "expected_trampoline": trampoline_guard.hex(),
