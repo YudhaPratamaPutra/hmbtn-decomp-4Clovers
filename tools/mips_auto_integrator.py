@@ -161,6 +161,8 @@ def main() -> None:
     p.add_argument("--start", type=_int, default=0)
     p.add_argument("--end", type=_int)
     p.add_argument("--json", action="store_true")
+    p.add_argument("--summary", action="store_true",
+                   help="print compact analysis counts instead of the full JSON report")
     p = sub.add_parser("jal-scan")
     p.add_argument("--input", required=True, type=Path)
     p.add_argument("--base", required=True, type=_int,
@@ -261,7 +263,15 @@ def main() -> None:
             args.input.read_bytes(), args.base,
             start_offset=args.start, end_offset=args.end,
         )
-        print(json.dumps(report.to_dict(), indent=2))
+        if args.summary:
+            print("[MIPS AUTO INTEGRATOR] MIPS ANALYSIS COMPLETE")
+            print(f"  Base address: 0x{report.base_address:08X}")
+            print(f"  Range: 0x{report.start_offset:X}-0x{report.end_offset:X}")
+            print(f"  Decoded instructions: {report.decoded_count}")
+            print(f"  Undecoded words: {report.undecoded_count}")
+            print(f"  Control-flow references: {len(report.references)}")
+        else:
+            print(json.dumps(report.to_dict(), indent=2))
     elif args.cmd == "jal-scan":
         from tools.mips.jal import scan_jal
         found = scan_jal(args.input.read_bytes(), args.base,

@@ -389,7 +389,7 @@ function(psx_overlay_mips_integration_targets)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
                 mod-discover --overlay ${overlay_dir}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
-                mips-analyze --input ${input_image} --base ${base_address}
+                mips-analyze --input ${input_image} --base ${base_address} --summary
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
                 jal-discover --overlay ${overlay_dir}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
