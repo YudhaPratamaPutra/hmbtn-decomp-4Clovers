@@ -100,7 +100,7 @@ enum FarmHitClass {
 
 static s32 farm_tile_classify(FarmTileQuery *query, s32 unused);
 static s32 farm_villager_find_box(FarmTileQuery *query);
-static s32 farm_tile_state(s16 column, s16 row, s32 mode);
+s32 farm_tile_state(s16 column, s16 row, s32 mode);
 static s32 farm_tile_is_special(FarmTileQuery *query);
 
 /* Cached status record and its low 16 flag bits. */
