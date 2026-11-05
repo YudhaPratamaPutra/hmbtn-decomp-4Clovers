@@ -184,6 +184,14 @@ def main() -> None:
                    help="overlay directory containing mod/")
     p.add_argument("--json", action="store_true",
                    help="emit machine-readable JSON")
+    p = sub.add_parser("symbol-resolve")
+    p.add_argument("--map", required=True, type=Path, help="GNU ld program.map")
+    p.add_argument("--symbol", action="append", required=True,
+                   help="exact symbol name; may be repeated")
+    p.add_argument("--json", action="store_true", help="emit JSON")
+    p = sub.add_parser("symbol-list")
+    p.add_argument("--map", required=True, type=Path, help="GNU ld program.map")
+    p.add_argument("--json", action="store_true", help="emit JSON")
     args = parser.parse_args()
     if args.cmd == "jal-encode":
         print(f"0x{encode_jal(args.pc, args.target):08X}")
@@ -225,6 +233,31 @@ def main() -> None:
         else:
             args.output.write_bytes(apply_hook_patch(image, plan))
             print(hook_plan_to_json(plan))
+    elif args.cmd in ("symbol-resolve", "symbol-list"):
+        from tools.mips.symbols import load_linker_map, resolve_symbols
+        symbol_table = load_linker_map(args.map)
+        if args.cmd == "symbol-resolve":
+            resolved = resolve_symbols(symbol_table, args.symbol)
+            if args.json:
+                print(json.dumps([item.to_dict() for item in resolved], indent=2))
+            else:
+                print("\\n".join(
+                    f"{item.name}=0x{item.address:08X}" for item in resolved
+                ))
+        else:
+            rows = [
+                {"symbol": name, "definitions": [
+                    {"address": f"0x{item.address:08X}", "line": item.line}
+                    for item in definitions
+                ]}
+                for name, definitions in sorted(symbol_table.items())
+            ]
+            if args.json:
+                print(json.dumps(rows, indent=2))
+            else:
+                for row in rows:
+                    addresses = ", ".join(item["address"] for item in row["definitions"])
+                    print(f"{row['symbol']}: {addresses}")
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
         inventory = discover_mod_sources(args.overlay)
