@@ -43,7 +43,7 @@ class HookInputTypeTests(unittest.TestCase):
                 trampoline_offset=32,
                 trampoline_pc=0x80010020,
                 expected_original_words=(0, 0),
-                expected_trampoline=b"\\x00" * 16,
+                expected_trampoline=b"\x00" * 16,
             )
 
 
