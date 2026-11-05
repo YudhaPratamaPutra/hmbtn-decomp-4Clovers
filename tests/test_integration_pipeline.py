@@ -83,8 +83,8 @@ class IntegrationPipelineTests(unittest.TestCase):
             "expected_trampoline": "CC" * 16,
         }], "0x80010010 farm_entry\n0x80012000 farm_mod_entry\n"
              "0x80010030 farm_trampoline\n"
-             "0x80010030 __mips_trampoline_start\n"
-             "0x80010040 __mips_trampoline_end\n")
+             "0x80010030 __mips_trampoline_start_11_GF_FARM\n"
+             "0x80010040 __mips_trampoline_end_11_GF_FARM\n")
         with self.assertRaisesRegex(IntegrationError, "does not equal trampoline symbol address"):
             self.run_plan(image)
 
