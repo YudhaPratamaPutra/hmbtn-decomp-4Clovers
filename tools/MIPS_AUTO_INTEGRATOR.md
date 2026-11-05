@@ -422,3 +422,26 @@ The target is opt-in and is not part of the default build. The original overlay
 BIN, program ELF, and A_FILE are not replaced. Future overlays gain the same
 pipeline by adding a `mod/` directory and using the existing `psx_overlay()`
 declaration; no FARM-specific CMake integration block is required.
+
+## Stage 13 — Connect the Pipeline to CMake Packaging
+
+The root CMake file registers per-overlay integration targets after including
+`cmake/disc.cmake`. This ensures the `afile` target already exists when the
+integration targets are connected.
+
+For each overlay with a `mod/` directory,
+`psx_overlay_mips_integration_targets()` adds a dependency from `afile` to
+`mips-integrate-<overlay>`. Each integration target itself depends on
+`program`, which builds the matching overlay image and shared linker map.
+The dependency chain is:
+
+```text
+program
+  └─ mips-integrate-<overlay>
+       └─ afile packaging
+```
+
+The dependency is created for every eligible overlay, not just FARM. There is
+no separate manual FARM target invocation. When `ORIGINAL_DISC` is not set,
+`disc.cmake` does not create `afile`; the per-overlay integration targets
+remain available as explicit build targets.
