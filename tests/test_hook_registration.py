@@ -82,6 +82,44 @@ class HookRegistrationTests(unittest.TestCase):
                 base_address=self.base,
             )
 
+    def test_rejects_trampoline_section_outside_image(self):
+        self._source(
+            '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
+            '"trampoline_symbol":"crop_pass_trampoline"}'
+        )
+        self.map_path.write_text(
+            f"0x{self.base + 16:08X} farm_tile_state\\n"
+            f"0x{self.base + 64:08X} mod_farm_tile_state\\n"
+            f"0x{self.base + 96:08X} crop_pass_trampoline\\n"
+            f"0x{self.base + 128:08X} __mips_trampoline_start\\n"
+            f"0x{self.base + 144:08X} __mips_trampoline_end\\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(HookRegistrationError, "outside the supplied image mapping"):
+            generate_hook_registry(
+                self.overlay, map_path=self.map_path, image_path=self.image_path,
+                base_address=self.base,
+            )
+
+    def test_rejects_reversed_trampoline_section_bounds(self):
+        self._source(
+            '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
+            '"trampoline_symbol":"crop_pass_trampoline"}'
+        )
+        self.map_path.write_text(
+            f"0x{self.base + 16:08X} farm_tile_state\\n"
+            f"0x{self.base + 64:08X} mod_farm_tile_state\\n"
+            f"0x{self.base + 96:08X} crop_pass_trampoline\\n"
+            f"0x{self.base + 112:08X} __mips_trampoline_start\\n"
+            f"0x{self.base + 80:08X} __mips_trampoline_end\\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(HookRegistrationError, "reversed bounds"):
+            generate_hook_registry(
+                self.overlay, map_path=self.map_path, image_path=self.image_path,
+                base_address=self.base,
+            )
+
     def test_rejects_trampoline_overlap_with_site(self):
         self._source(
             '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
