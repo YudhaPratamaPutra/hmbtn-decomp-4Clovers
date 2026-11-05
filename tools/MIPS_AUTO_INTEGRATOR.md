@@ -233,3 +233,47 @@ linker map/binary layout after patching. Those remain explicit verification
 tasks. The FARM registry currently has an empty `hooks` array, so integration
 currently produces a valid no-op plan; no game binary is modified until
 verified entries are added.
+
+
+## Stage 7 — Post-integration Validation Engine
+
+The validation engine is implemented in `tools/mips/validation.py`. It
+compares the original image, patched output, and the exact `IntegrationPlan`
+built from the original image and current registry/map inputs.
+
+It verifies:
+- The original image SHA-256 matches the plan.
+- Original and patched image sizes are identical.
+- Every planned JAL replacement word matches the output.
+- Every planned HOOK site and trampoline byte sequence matches the output.
+- The authorized patch ranges do not overlap.
+- Every changed byte is contained within one of those authorized ranges.
+- Bytes outside the authorized ranges remain identical to the original image.
+
+The validator is read-only. It does not repair output, infer patch ranges,
+validate whether trampoline storage is semantically unused, or prove that the
+linked map and binary were produced by the same build beyond the explicit
+symbol/address and original-image checks already performed by the integration
+pipeline. Linker-map and binary layout comparisons remain a separate build
+verification responsibility.
+
+Validate an existing patched image:
+
+```sh
+python3 tools/mips_auto_integrator.py integrate-validate \\
+  --input build/11_GF_FARM.bin \\
+  --patched build/11_GF_FARM.patched.bin \\
+  --base 0x800B0000 --overlay 11_GF_FARM \\
+  --registry src/overlay/11_GF_FARM/mod/hooks.json \\
+  --map build/program.map
+```
+
+The command rebuilds the plan from the supplied original image, registry, and
+map, then validates the supplied patched image against that plan. It emits
+SHA-256 values, image size, authorized patch ranges, and actual changed ranges.
+A failed check raises a validation error; the validator never modifies either
+input file.
+
+The FARM registry currently contains no registered hooks, so its current
+validation plan is a no-op: only an output byte-for-byte identical to the
+original image is valid.
