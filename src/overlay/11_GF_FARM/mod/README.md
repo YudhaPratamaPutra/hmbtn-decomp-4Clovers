@@ -55,7 +55,7 @@ The scanner reads these explicit fields:
 - `id`: unique declaration identifier within the overlay.
 - `type`: currently must be `hook`.
 - `site_symbol`: exact original-game function symbol in the linker map.
-- `trampoline_symbol`: exact global symbol of a 16-byte reserved buffer in the linker-owned `.mips_trampoline` section. Declare its storage with `MIPS_AUTO_HOOK_TRAMPOLINE(symbol);` from `mips_auto_hook.h`.
+- `trampoline_symbol`: exact global symbol of a 16-byte reserved buffer in the linker-owned `.mips_trampoline.11_GF_FARM` section. Declare its storage with `MIPS_AUTO_HOOK_TRAMPOLINE(symbol);` from `mips_auto_hook.h`.
 - The immediately following C function definition supplies `hook_symbol`.
 
 Run the scanner:
@@ -82,7 +82,7 @@ python3 tools/mips_auto_integrator.py hook-register \\
 
 The command writes `mod/hooks.json` by default. It fails closed for missing or
 ambiguous symbols, invalid instruction pairs, out-of-image offsets, and
-overlapping patch regions. The registration generator requires the named buffer to fall entirely between `__mips_trampoline_start` and `__mips_trampoline_end` in the linker map. It does not modify the game image.
+overlapping patch regions. The registration generator requires the named buffer to fall entirely between `__mips_trampoline_start_11_GF_FARM` and `__mips_trampoline_end_11_GF_FARM` in the linker map. It does not modify the game image.
 
 ## CMake-driven hook registration (V9.4)
 
@@ -102,7 +102,7 @@ declarations in the discovered mod C sources. Existing explicit JAL entries
 are preserved by the registry writer. Do not hand-edit generated hook entries;
 change the source declaration and rebuild the target instead.
 
-The declaration names a global 16-byte buffer placed in `.mips_trampoline`. The linker script brackets that input section with `__mips_trampoline_start` and `__mips_trampoline_end`; the registry generator resolves the named buffer symbol rather than accepting a guessed file offset. The target writes a sidecar patched image and
+The declaration names a global 16-byte buffer placed in `.mips_trampoline.11_GF_FARM`. The linker script brackets that input section with `__mips_trampoline_start` and `__mips_trampoline_end`; the registry generator resolves the named buffer symbol rather than accepting a guessed file offset. The target writes a sidecar patched image and
 does not replace the original overlay or A_FILE.
 
 ## Hook registry
