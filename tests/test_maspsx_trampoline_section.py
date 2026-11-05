@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -26,6 +29,65 @@ class TrampolineSectionTests(unittest.TestCase):
         self.assertIn("aligned(4)", header)
         self.assertIn("unsigned int symbol[4]", header)
         self.assertIn("{0, 0, 0, 0}", header)
+
+    def test_linker_keeps_each_overlay_trampoline_in_its_own_output_section(self):
+        assembler = shutil.which("as")
+        linker = shutil.which("ld")
+        nm = shutil.which("nm")
+        if not all((assembler, linker, nm)):
+            self.skipTest("GNU as, ld, and nm are required for linker-section fixture")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            farm_source = root / "farm.s"
+            other_source = root / "other.s"
+            farm_object = root / "farm.o"
+            other_object = root / "other.o"
+            script = root / "fixture.ld"
+            elf = root / "fixture.elf"
+            farm_source.write_text(
+                '.section .mips_trampoline.11_GF_FARM,"aw",@progbits\\n'
+                '.globl farm_trampoline\\nfarm_trampoline:\\n'
+                '.zero 16\\n',
+                encoding="utf-8",
+            )
+            other_source.write_text(
+                '.section .mips_trampoline.12_OTHER,"aw",@progbits\\n'
+                '.globl other_trampoline\\nother_trampoline:\\n'
+                '.zero 16\\n',
+                encoding="utf-8",
+            )
+            script.write_text(
+                'SECTIONS {\\n'
+                '  .11_GF_FARM : {\\n'
+                '    __mips_trampoline_start_11_GF_FARM = .;\\n'
+                '    KEEP(*(.mips_trampoline.11_GF_FARM))\\n'
+                '    __mips_trampoline_end_11_GF_FARM = .;\\n'
+                '  }\\n'
+                '  .12_OTHER : {\\n'
+                '    __mips_trampoline_start_12_OTHER = .;\\n'
+                '    KEEP(*(.mips_trampoline.12_OTHER))\\n'
+                '    __mips_trampoline_end_12_OTHER = .;\\n'
+                '  }\\n'
+                '}\\n',
+                encoding="utf-8",
+            )
+            subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
+                           check=True, capture_output=True, text=True)
+            subprocess.run([assembler, str(other_source), "-o", str(other_object)],
+                           check=True, capture_output=True, text=True)
+            subprocess.run([linker, "-T", str(script), "-Map", str(root / "fixture.map"),
+                            "-o", str(elf), str(farm_object), str(other_object)],
+                           check=True, capture_output=True, text=True)
+            symbols = subprocess.run([nm, "-n", str(elf)], check=True,
+                                     capture_output=True, text=True).stdout
+            self.assertIn("__mips_trampoline_start_11_GF_FARM", symbols)
+            self.assertIn("__mips_trampoline_end_11_GF_FARM", symbols)
+            self.assertIn("__mips_trampoline_start_12_OTHER", symbols)
+            self.assertIn("__mips_trampoline_end_12_OTHER", symbols)
+            self.assertIn("farm_trampoline", symbols)
+            self.assertIn("other_trampoline", symbols)
+            self.assertNotIn("farm_trampoline", symbols.split("__mips_trampoline_start_12_OTHER")[0].split(".12_OTHER")[0])
 
     def test_maspsx_preserves_trampoline_section_and_storage_directives(self):
         source = [
