@@ -160,8 +160,12 @@ endfunction()
 # paths are relative to the overlay, matching psx_overlay(SOURCES ...). CONFIGURE_DEPENDS
 # makes CMake regenerate when mod C files are added or removed.
 function(psx_overlay_mod_sources out_var)
-    file(GLOB mod_sources CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+    # Recursive discovery supports mod subfolders while preserving deterministic
+    # relative paths and object names. No existing game source is reordered.
+    file(GLOB_RECURSE mod_sources CONFIGURE_DEPENDS LIST_DIRECTORIES false
+        RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/mod/*.c)
+    list(SORT mod_sources)
     set(${out_var} ${mod_sources} PARENT_SCOPE)
 endfunction()
 
