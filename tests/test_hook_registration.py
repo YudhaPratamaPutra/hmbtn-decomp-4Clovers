@@ -24,7 +24,11 @@ class HookRegistrationTests(unittest.TestCase):
         self.image_path.write_bytes(image)
         self.map_path.write_text(
             f"0x{self.base + 16:08X} farm_tile_state\n"
-            f"0x{self.base + 64:08X} mod_farm_tile_state\n",
+            f"0x{self.base + 64:08X} mod_farm_tile_state\n"
+            f"0x{self.base + 96:08X} crop_pass_trampoline\n"
+            f"0x{self.base + 16:08X} overlap_trampoline\n"
+            f"0x{self.base + 96:08X} __mips_trampoline_start\n"
+            f"0x{self.base + 112:08X} __mips_trampoline_end\n",
             encoding="utf-8",
         )
 
@@ -41,7 +45,7 @@ class HookRegistrationTests(unittest.TestCase):
     def test_generates_registry_from_map_and_exact_image_bytes(self):
         self._source(
             '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
-            '"trampoline_offset":"0x60"}'
+            '"trampoline_symbol":"crop_pass_trampoline"}'
         )
         registry = generate_hook_registry(
             self.overlay, map_path=self.map_path, image_path=self.image_path,
@@ -69,7 +73,7 @@ class HookRegistrationTests(unittest.TestCase):
     def test_rejects_missing_target_symbol(self):
         self._source(
             '{"id":"crop-pass","type":"hook","site_symbol":"not_in_map",'
-            '"trampoline_offset":96}'
+            '"trampoline_symbol":"missing_trampoline"}'
         )
         with self.assertRaises(HookRegistrationError):
             generate_hook_registry(
@@ -80,7 +84,7 @@ class HookRegistrationTests(unittest.TestCase):
     def test_rejects_trampoline_overlap_with_site(self):
         self._source(
             '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
-            '"trampoline_offset":16}'
+            '"trampoline_symbol":"overlap_trampoline"}'
         )
         with self.assertRaises(HookRegistrationError):
             generate_hook_registry(
