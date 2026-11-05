@@ -215,6 +215,11 @@ def scan_hook_declarations(
                 f"cannot identify function definition after declaration in {source_name}"
             )
         hook_symbol = match.group(1)
+        if hook_symbol in {"if", "for", "while", "switch"}:
+            raise HookDeclarationError(
+                f"declaration at {source_name}:{source_text.count(chr(10), 0, start) + 1} "
+                "is followed by a control statement, not a function definition"
+            )
         line_number = source_text.count("\n", 0, start) + 1
         found.append(HookDeclaration(
             declaration_id, hook_symbol, site_symbol, source_name, line_number,
