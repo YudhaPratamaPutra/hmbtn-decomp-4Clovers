@@ -1,0 +1,32 @@
+name: Stage 5 MIPS GNU Linker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mips-gnu-linker:
+    name: MIPS objects, GNU ld, and linker map
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+
+      - name: Install MIPS GNU binutils
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes binutils-mips-linux-gnu
+
+      - name: Confirm target MIPS tools
+        run: |
+          command -v mips-linux-gnu-as
+          command -v mips-linux-gnu-ld
+          command -v mips-linux-gnu-nm
+          mips-linux-gnu-as --version
+          mips-linux-gnu-ld --version
+
+      - name: Link MIPS objects and inspect GNU linker map
+        run: |
+          python3 -m unittest discover -s tests -p 'test_maspsx_trampoline_section.py' -v
