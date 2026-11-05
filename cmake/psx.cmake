@@ -355,3 +355,65 @@ function(psx_program)
     get_property(targets GLOBAL PROPERTY PSX_PROGRAM_TARGETS)
     add_dependencies(program ${targets})
 endfunction()
+
+
+# psx_overlay_mips_integration_targets()
+#
+# Create an opt-in MIPS integration target for each overlay with a mod/ directory.
+# The normal program target first compiles every overlay mod source and produces
+# program.map plus the original overlay BINs. Integration then discovers declarations,
+# generates the registry, plans/applies patches, and validates a separate sidecar BIN.
+function(psx_overlay_mips_integration_targets)
+    get_property(overlays GLOBAL PROPERTY PSX_OVERLAYS)
+    foreach(overlay IN LISTS overlays)
+        set(overlay_dir ${CMAKE_SOURCE_DIR}/src/overlay/${overlay})
+        if(NOT IS_DIRECTORY "${overlay_dir}/mod")
+            continue()
+        endif()
+
+        get_property(overlay_info GLOBAL PROPERTY PSX_OVERLAY_${overlay})
+        list(GET overlay_info 0 region)
+        list(GET overlay_info 1 overlay_file)
+        get_property(base_address GLOBAL PROPERTY PSX_REGION_${region})
+        set(registry ${overlay_dir}/mod/hooks.json)
+        set(input_image ${CMAKE_BINARY_DIR}/${overlay_file})
+        set(output_image ${CMAKE_BINARY_DIR}/${overlay}.mod.bin)
+
+        add_custom_target(mips-integrate-${overlay}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                overlay-discover --root ${CMAKE_SOURCE_DIR}/src/overlay
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                mod-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                mips-analyze --input ${input_image} --base ${base_address}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                jal-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                hook-discover --overlay ${overlay_dir}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                hook-register --overlay ${overlay_dir}
+                --map ${CMAKE_BINARY_DIR}/program.map
+                --input ${input_image} --base ${base_address}
+                --output ${registry}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                jal-register --overlay ${overlay_dir}
+                --map ${CMAKE_BINARY_DIR}/program.map
+                --input ${input_image} --base ${base_address}
+                --output ${registry}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-plan --input ${input_image} --base ${base_address}
+                --overlay ${overlay} --registry ${registry}
+                --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-apply --input ${input_image} --output ${output_image}
+                --base ${base_address} --overlay ${overlay}
+                --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+                integrate-validate --input ${input_image} --patched ${output_image}
+                --base ${base_address} --overlay ${overlay}
+                --registry ${registry} --map ${CMAKE_BINARY_DIR}/program.map
+            COMMENT "MIPS Auto Integrator: complete per-overlay pipeline for ${overlay}"
+            VERBATIM)
+        add_dependencies(mips-integrate-${overlay} program)
+    endforeach()
+endfunction()
