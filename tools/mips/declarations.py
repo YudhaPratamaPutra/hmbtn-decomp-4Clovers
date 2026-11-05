@@ -119,7 +119,7 @@ def _comment_declarations(source: str) -> list[tuple[int, int, dict[str, Any]]]:
         end = close + 2
         comment = source[start:end]
         i = end
-        if not comment.lstrip().startswith("/*" + _MARKER):
+        if not comment[2:-2].lstrip().startswith(_MARKER):
             continue
         if comment.count(_MARKER) != 1:
             raise HookDeclarationError("each declaration comment must contain exactly one marker")
