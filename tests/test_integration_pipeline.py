@@ -56,10 +56,13 @@ class IntegrationPipelineTests(unittest.TestCase):
         self.write_inputs([{
             "id": "farm-entry", "type": "hook", "site_symbol": "farm_entry",
             "site_offset": "0x10", "hook_symbol": "farm_mod_entry",
-            "trampoline_offset": "0x30",
+            "trampoline_symbol": "farm_trampoline", "trampoline_offset": "0x30",
             "expected_words": ["0x27BDFFE8", "0xAFBF0010"],
             "expected_trampoline": "CC" * 16,
-        }], "0x80010010 farm_entry\n0x80012000 farm_mod_entry\n")
+        }], "0x80010010 farm_entry\n0x80012000 farm_mod_entry\n"
+             "0x80010030 farm_trampoline\n"
+             "0x80010030 __mips_trampoline_start\n"
+             "0x80010040 __mips_trampoline_end\n")
         plan = self.run_plan(image)
         patched = apply_integration_plan(
             bytes(image), plan, base_address=self.base, overlay="11_GF_FARM",
