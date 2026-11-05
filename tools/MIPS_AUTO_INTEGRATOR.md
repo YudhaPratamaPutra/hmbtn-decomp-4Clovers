@@ -400,8 +400,10 @@ For the current FARM mod directory, invoke:
 cmake --build build --target mips-integrate-11_GF_FARM
 ```
 
-The target is opt-in and is not part of the default build. The original overlay
-BIN, program ELF, and A_FILE are not replaced. Future overlays gain the same
+Each `mips-integrate-<overlay>` target can be invoked directly. When the
+original disc is configured and the `afile` target exists, A_FILE packaging
+depends on all eligible overlay integration targets automatically. The original
+overlay BIN and program ELF are not replaced. Future overlays gain the same
 pipeline by adding a `mod/` directory and using the existing `psx_overlay()`
 declaration; no FARM-specific CMake integration block is required.
 
