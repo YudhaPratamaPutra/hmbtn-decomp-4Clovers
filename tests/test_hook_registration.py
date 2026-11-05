@@ -91,8 +91,8 @@ class HookRegistrationTests(unittest.TestCase):
             f"0x{self.base + 16:08X} farm_tile_state\n"
             f"0x{self.base + 64:08X} mod_farm_tile_state\n"
             f"0x{self.base + 96:08X} crop_pass_trampoline\n"
-            f"0x{self.base + 128:08X} __mips_trampoline_start\n"
-            f"0x{self.base + 144:08X} __mips_trampoline_end\n",
+            f"0x{self.base + 128:08X} __mips_trampoline_start_11_GF_FARM\n"
+            f"0x{self.base + 144:08X} __mips_trampoline_end_11_GF_FARM\n",
             encoding="utf-8",
         )
         with self.assertRaisesRegex(HookRegistrationError, "outside the supplied image mapping"):
@@ -110,8 +110,8 @@ class HookRegistrationTests(unittest.TestCase):
             f"0x{self.base + 16:08X} farm_tile_state\n"
             f"0x{self.base + 64:08X} mod_farm_tile_state\n"
             f"0x{self.base + 96:08X} crop_pass_trampoline\n"
-            f"0x{self.base + 112:08X} __mips_trampoline_start\n"
-            f"0x{self.base + 80:08X} __mips_trampoline_end\n",
+            f"0x{self.base + 112:08X} __mips_trampoline_start_11_GF_FARM\n"
+            f"0x{self.base + 80:08X} __mips_trampoline_end_11_GF_FARM\n",
             encoding="utf-8",
         )
         with self.assertRaisesRegex(HookRegistrationError, "reversed bounds"):
