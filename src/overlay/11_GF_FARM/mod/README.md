@@ -85,6 +85,29 @@ overlapping patch regions. `trampoline_offset` remains a deliberate, explicit
 choice: the generator checks the bytes found there but cannot prove that the
 region is unused or safe. It does not modify the game image.
 
+## CMake-driven hook registration (V9.4)
+
+The optional `mips-integrate-farm` CMake target now runs hook registration
+after the `program` target has produced the FARM overlay image and matching
+`program.map`. It invokes `hook-register` with those exact build outputs and
+writes the generated registry to `mod/hooks.json` before integration begins.
+
+Run it with:
+
+```sh
+cmake --build build --target mips-integrate-farm
+```
+
+Function-entry hook entries are generated from the `MIPS_AUTO_HOOK`
+declarations in the discovered mod C sources. Existing explicit JAL entries
+are preserved by the registry writer. Do not hand-edit generated hook entries;
+change the source declaration and rebuild the target instead.
+
+The declaration must still provide an explicit `trampoline_offset`. V9.4
+automates registry generation; it does not infer trampoline storage or prove
+that a chosen location is safe. The target writes a sidecar patched image and
+does not replace the original overlay or A_FILE.
+
 ## Hook registry
 
 For function-entry hooks, treat `hooks.json` as generated output rather than
