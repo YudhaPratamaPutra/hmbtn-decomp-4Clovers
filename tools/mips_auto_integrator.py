@@ -179,6 +179,11 @@ def main() -> None:
         p.add_argument("--word1", required=True, type=_int)
         p.add_argument("--expected-trampoline", required=True,
                        help="exact 16-byte trampoline storage as 32 hex characters")
+    p = sub.add_parser("mod-discover")
+    p.add_argument("--overlay", required=True, type=Path,
+                   help="overlay directory containing mod/")
+    p.add_argument("--json", action="store_true",
+                   help="emit machine-readable JSON")
     args = parser.parse_args()
     if args.cmd == "jal-encode":
         print(f"0x{encode_jal(args.pc, args.target):08X}")
@@ -220,6 +225,23 @@ def main() -> None:
         else:
             args.output.write_bytes(apply_hook_patch(image, plan))
             print(hook_plan_to_json(plan))
+    elif args.cmd == "mod-discover":
+        from tools.mips.discovery import discover_mod_sources
+        inventory = discover_mod_sources(args.overlay)
+        if args.json:
+            print(json.dumps(inventory.to_dict(), indent=2))
+        else:
+            print(f"Overlay: {inventory.overlay}")
+            print(f"C sources: {len(inventory.sources)}")
+            for source in inventory.sources:
+                print(f"  {source}")
+            print(f"Headers: {len(inventory.headers)}")
+            for header in inventory.headers:
+                print(f"  {header}")
+            if inventory.registry_path:
+                print(f"Hook registry: {inventory.registry_path} ({inventory.registry_hooks} entries)")
+            else:
+                print("Hook registry: not present")
 
 
 if __name__ == "__main__":
