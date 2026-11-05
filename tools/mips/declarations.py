@@ -177,7 +177,7 @@ def scan_hook_declarations(
                 "is not followed by a function definition"
             )
         signature = tail[:boundary].strip()
-        match = _FUNCTION_TAIL.fullmatch(signature)
+        match = _FUNCTION_TAIL.search(signature)
         if not match:
             raise HookDeclarationError(
                 f"cannot identify function definition after declaration in {source_name}"
