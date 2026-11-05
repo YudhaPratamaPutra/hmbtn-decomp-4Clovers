@@ -149,14 +149,87 @@ python3 tools/mips_auto_integrator.py symbol-resolve \
   --symbol item_merge_dispatch --json
 ```
 
-The output includes symbol addresses and map line numbers. This stage does not
-yet connect registry entries to JAL/HOOK patch plans; it only supplies a
-verifiable symbol-resolution primitive. For overlay code, callers must still
-confirm that the map belongs to the exact linked image and that the resolved
-address is in the intended overlay region.
+The output includes symbol addresses and map line numbers. The map must belong
+to the exact linked image being inspected.
 
-## Remaining integration work
+## Stage 6 — Registry-driven Auto Integration
 
-The three engines are still explicit-address tools. Linker-map symbol resolution,
-registry-driven JAL/HOOK requests, automatic safe trampoline allocation, overlay
-lifecycle integration, and binary/map regression validation remain future stages.
+The integration pipeline is in `tools/mips/integration.py`. It connects the
+registry, exact linker-map symbols, JAL planner, and HOOK planner. It has two
+commands:
+
+Plan only; this does not write a binary:
+
+```sh
+python3 tools/mips_auto_integrator.py integrate-plan \
+  --input build/11_GF_FARM.bin --base 0x800B0000 \
+  --overlay 11_GF_FARM \
+  --registry src/overlay/11_GF_FARM/mod/hooks.json \
+  --map build/program.map
+```
+
+Apply after reviewing the plan and independently verifying the image/map pair:
+
+```sh
+python3 tools/mips_auto_integrator.py integrate-apply \
+  --input build/11_GF_FARM.bin --output build/11_GF_FARM.patched.bin \
+  --base 0x800B0000 --overlay 11_GF_FARM \
+  --registry src/overlay/11_GF_FARM/mod/hooks.json \
+  --map build/program.map
+```
+
+The base address is the explicitly supplied runtime address for byte zero of
+the input image. Registry offsets are file offsets from that same byte zero.
+The pipeline checks that each site symbol's map address equals
+`base + file_offset`; hook trampoline runtime address is likewise calculated
+only from the explicit image mapping and trampoline file offset.
+
+Version-1 registry entries are strict; unknown or missing keys are rejected.
+A JAL entry has this shape:
+
+```json
+{
+  "id": "call-example",
+  "type": "jal",
+  "site_symbol": "verified_callsite_symbol",
+  "file_offset": "0x120",
+  "expected_word": "0x0C000000",
+  "expected_target": "0x80000000",
+  "target_symbol": "verified_target_symbol"
+}
+```
+
+A HOOK entry has this shape:
+
+```json
+{
+  "id": "entry-example",
+  "type": "hook",
+  "site_symbol": "verified_function_symbol",
+  "site_offset": "0x200",
+  "hook_symbol": "linked_mod_entry_symbol",
+  "trampoline_offset": "0x700",
+  "expected_words": ["0x27BDFFE8", "0xAFBF0010"],
+  "expected_trampoline": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+}
+```
+
+These values illustrate the schema only; they are not game addresses, verified
+instructions, or a declaration that trampoline storage is free. Do not add a
+registry entry until the exact map symbols, file offsets, original instruction
+words, and 16-byte trampoline region have been independently established.
+
+Planning validates every entry before producing a plan. It rejects missing or
+ambiguous symbols, symbol/file mapping mismatches, original-byte mismatches,
+unsupported displaced instructions, invalid jump regions, duplicate IDs, and
+overlapping patch regions. The plan records the input image SHA-256. Apply
+rebuilds the plan from the current registry and map and refuses if the plan or
+input image has changed; it writes a separate output image and leaves the input
+untouched.
+
+The pipeline does not search for or allocate trampoline space, prove that a
+reserved region is unused, infer overlay load addresses, or validate the final
+linker map/binary layout after patching. Those remain explicit verification
+tasks. The FARM registry currently has an empty `hooks` array, so integration
+currently produces a valid no-op plan; no game binary is modified until
+verified entries are added.
