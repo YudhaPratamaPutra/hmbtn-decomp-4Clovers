@@ -187,7 +187,8 @@ def scan_hook_declarations(
                     or trampoline_offset & 3):
                 raise HookDeclarationError(
                     "trampoline_offset must be a non-negative aligned integer"
-                )\n        if declaration_id in seen_ids:
+                )
+        if declaration_id in seen_ids:
             raise HookDeclarationError(f"duplicate hook declaration id: {declaration_id}")
         if site_symbol in seen_sites:
             raise HookDeclarationError(f"duplicate hook target declaration: {site_symbol}")
