@@ -5,6 +5,7 @@ on:
     paths:
       - "tools/mips/**"
       - "tools/mips_auto_integrator.py"
+      - "CMakeLists.txt"
       - "tests/**"
       - "cmake/overlay.ld.in"
       - "src/overlay/**/mod/**"
