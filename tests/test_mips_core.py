@@ -37,6 +37,7 @@ class MipsCoreTests(unittest.TestCase):
     def test_regimm_link_branch(self):
         ins = decode(encode_i(1, 4, 16, -2), 0x80010000)
         self.assertEqual(ins.mnemonic, "bltzal")
+        self.assertEqual(ins.branch_target, 0x8000FFFC)
         self.assertTrue(ins.control_transfer)
 
     def test_cop0_rfe_classification(self):
