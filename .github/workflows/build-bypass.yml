@@ -1,0 +1,164 @@
+# Build code binaries on pull requests. Manual runs build the full disc and
+# replace the single packaged ROM ZIP in the configured Google Drive folder.
+name: build-bypass
+
+on:
+  workflow_dispatch:
+concurrency:
+  group: build-bypass-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t hmbtn-build .
+
+      - name: Download original disc image
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/original-disc"
+          gh release download Disc --repo "$GITHUB_REPOSITORY" \
+            --pattern disc.bin --dir "$RUNNER_TEMP/original-disc"
+
+      #- name: Build and check code binaries
+      #  if: github.event_name != 'workflow_dispatch'
+      #  run: >
+      #    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src -w /src hmbtn-build
+      #    bash -c 'cmake -S . -B build -G Ninja && cmake --build build --target check'
+
+      - name: Build full disc and run MIPS FARM integration
+        if: github.event_name == 'workflow_dispatch'
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src
+          -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
+          bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin &&
+          cmake --build build --target disc'
+
+      - name: Install rclone and zip
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone zip
+
+      - name: Configure Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GDRIVE_CONFIG: ${{ secrets.GDRIVE_CONFIG }}
+          GDRIVE_FOLDER_ID: "1DHP-CuGL_T8Am430V0gslAeGJqHvwVvR"
+        run: |
+          if [ -z "$GDRIVE_CONFIG" ]; then
+            echo "::error::GitHub Actions secret GDRIVE_CONFIG is not configured."
+            exit 1
+          fi
+          mkdir -p "$HOME/.config/rclone"
+          umask 077
+          printf '%s' "$GDRIVE_CONFIG" > "$HOME/.config/rclone/rclone.conf"
+          rclone listremotes | grep -Fxq 'gdrive:' || {
+            echo "::error::rclone config must define a remote named gdrive."
+            exit 1
+          }
+          echo "RCLONE_DRIVE_ROOT_FOLDER_ID=$GDRIVE_FOLDER_ID" >> "$GITHUB_ENV"
+
+      - name: Package FARM integration verification
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          test -s build/11_GF_FARM.bin
+          test -s build/11_GF_FARM.mod.bin
+          test -s build/program.map
+          mkdir -p dist
+          rm -f dist/farm-integration-verification.zip
+          zip -j dist/farm-integration-verification.zip \
+            build/11_GF_FARM.bin \
+            build/11_GF_FARM.mod.bin \
+            build/program.map
+          unzip -t dist/farm-integration-verification.zip
+          expected="$(printf '11_GF_FARM.bin\n11_GF_FARM.mod.bin\nprogram.map')"
+          actual="$(unzip -Z1 dist/farm-integration-verification.zip | sort)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::FARM verification ZIP has unexpected contents."
+            exit 1
+          fi
+
+      - name: Replace FARM integration ZIP in Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          rclone copyto dist/farm-integration-verification.zip \
+            gdrive:farm-integration-verification.zip \
+            --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
+            --verbose
+
+      - name: Publish FARM integration Google Drive link
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          file_id="$(rclone lsjson gdrive:farm-integration-verification.zip \
+            --stat --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" |
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])')"
+          if [ -z "$file_id" ]; then
+            echo "::error::Could not retrieve the FARM integration ZIP file ID."
+            exit 1
+          fi
+          download_url="https://drive.google.com/uc?export=download&id=$file_id"
+          {
+            echo "## FARM integration verification"
+            echo
+            echo "[Download farm-integration-verification.zip from Google Drive]($download_url)"
+            echo
+            echo "Contains the original FARM image, integrated sidecar image, and matching linker map."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=FARM integration download::The verification ZIP link is available in the workflow summary."
+
+      - name: Package modified ROM
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          test -s build/disc.bin
+          test -s build/disc.cue
+          mkdir -p dist
+          rm -f dist/harvest-moon-modified-rom.zip
+          zip -j dist/harvest-moon-modified-rom.zip build/disc.bin build/disc.cue
+          unzip -t dist/harvest-moon-modified-rom.zip
+          expected="$(printf 'disc.bin\ndisc.cue')"
+          actual="$(unzip -Z1 dist/harvest-moon-modified-rom.zip | sort)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::ZIP must contain exactly disc.bin and disc.cue."
+            exit 1
+          fi
+
+      # copyto updates the same named Drive file; it does not sync or delete
+      # unrelated files in the destination folder.
+      - name: Replace ROM ZIP in Google Drive
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          rclone copyto dist/harvest-moon-modified-rom.zip \
+            gdrive:harvest-moon-modified-rom.zip \
+            --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" \
+            --verbose
+
+      - name: Publish Google Drive download link
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          file_id="$(rclone lsjson gdrive:harvest-moon-modified-rom.zip \
+            --stat --drive-root-folder-id "$RCLONE_DRIVE_ROOT_FOLDER_ID" |
+            python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])')"
+          if [ -z "$file_id" ]; then
+            echo "::error::Could not retrieve the uploaded Google Drive file ID."
+            exit 1
+          fi
+          download_url="https://drive.google.com/uc?export=download&id=$file_id"
+          {
+            echo "## Modified ROM"
+            echo
+            echo "[Download harvest-moon-modified-rom.zip from Google Drive]($download_url)"
+            echo
+            echo "The ZIP is stored in the configured Google Drive folder."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Google Drive download::The download link is available in the workflow summary."
+          
