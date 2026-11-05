@@ -94,11 +94,19 @@ class HookRegistrationTests(unittest.TestCase):
             '"trampoline_offset":96}'
         )
         output = self.overlay / "mod" / "hooks.json"
+        existing = {
+            "schema_version": 1,
+            "module": "11_GF_FARM",
+            "hooks": [{"id": "manual-jal", "type": "jal"}],
+        }
+        output.write_text(__import__("json").dumps(existing), encoding="utf-8")
         registry = write_hook_registry(
             self.overlay, output, map_path=self.map_path,
             image_path=self.image_path, base_address=self.base,
         )
-        self.assertEqual(output.read_text(encoding="utf-8"), 
+        self.assertEqual(registry["hooks"][0], existing["hooks"][0])
+        self.assertEqual(registry["hooks"][1]["id"], "crop-pass")
+        self.assertEqual(output.read_text(encoding="utf-8"),
                          __import__("json").dumps(registry, indent=2) + "\n")
 
 
