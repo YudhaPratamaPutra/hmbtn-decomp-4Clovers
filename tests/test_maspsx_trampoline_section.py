@@ -61,8 +61,8 @@ class TrampolineSectionTests(unittest.TestCase):
                 '.zero 16\n',
                 encoding="utf-8",
             )
-            farm_header_source.write_text('.data\\n.long 0\\n', encoding="utf-8")
-            other_header_source.write_text('.data\\n.long 0\\n', encoding="utf-8")
+            farm_header_source.write_text('.data\n.long 0\n', encoding="utf-8")
+            other_header_source.write_text('.data\n.long 0\n', encoding="utf-8")
             template = Path("cmake/overlay.ld.in").read_text(encoding="utf-8")
 
             def overlay_block(name, object_name):
@@ -83,8 +83,8 @@ class TrampolineSectionTests(unittest.TestCase):
 
             script.write_text(
                 "overlay_low = 0x80010000;\nSECTIONS {\n"
-                + overlay_block("11_GF_FARM", "farm.o")
-                + overlay_block("12_OTHER", "other.o")
+                + overlay_block("11_GF_FARM", "farm_header.o")
+                + overlay_block("12_OTHER", "other_header.o")
                 + "/DISCARD/ : { *(*); }\n}\n",
                 encoding="utf-8",
             )
