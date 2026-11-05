@@ -81,7 +81,7 @@ jobs:
             build/11_GF_FARM.mod.bin \
             build/program.map
           unzip -t dist/farm-integration-verification.zip
-          expected="$(printf '11_GF_FARM.bin\\n11_GF_FARM.mod.bin\\nprogram.map')"
+          expected="$(printf '11_GF_FARM.bin\n11_GF_FARM.mod.bin\nprogram.map')"
           actual="$(unzip -Z1 dist/farm-integration-verification.zip | sort)"
           if [ "$actual" != "$expected" ]; then
             echo "::error::FARM verification ZIP has unexpected contents."
