@@ -31,13 +31,16 @@ class HookEngineTests(unittest.TestCase):
         return plan_hook_patch(bytes(self.image), **args)
 
     def test_plan_and_apply_writes_hook_and_trampoline(self):
+        original_image = bytes(self.image)
         plan = self.plan()
-        patched = apply_hook_patch(bytes(self.image), plan)
+        patched = apply_hook_patch(original_image, plan)
+        self.assertEqual(bytes(self.image), original_image)
         self.assertEqual(len(patched), len(self.image))
         self.assertEqual(struct.unpack_from("<2I", patched, self.site_offset), plan.hook_words)
         self.assertEqual(struct.unpack_from("<4I", patched, self.trampoline_offset),
                          plan.trampoline_words)
-        self.assertEqual(bytes(self.image), bytes(self.image))
+        self.assertEqual(patched[self.trampoline_offset + 8:self.trampoline_offset + 16],
+                         struct.pack("<2I", plan.trampoline_words[2], 0))
 
     def test_hook_site_original_guard(self):
         with self.assertRaises(HookEngineError):
