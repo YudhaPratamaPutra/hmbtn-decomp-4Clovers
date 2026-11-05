@@ -1,8 +1,8 @@
 """Generate the V9 hook registry from explicit declarations and verified build inputs.
 
-The generator resolves symbols from the supplied linker map, derives only the
-site file offset from the supplied image base, and reads all byte guards from
-the exact supplied image. Trampoline placement remains an explicit declaration.
+The generator resolves the site, hook, and linker-reserved trampoline symbols
+from the supplied map, derives file offsets from the image base, and reads all
+byte guards from the exact supplied image.
 """
 from __future__ import annotations
 
@@ -61,6 +61,8 @@ def generate_hook_registry(
             site = resolve_symbol(symbols, declaration.site_symbol)
             hook = resolve_symbol(symbols, declaration.hook_symbol)
             trampoline = resolve_symbol(symbols, declaration.trampoline_symbol)
+            trampoline_start = resolve_symbol(symbols, "__mips_trampoline_start")
+            trampoline_end = resolve_symbol(symbols, "__mips_trampoline_end")
         except SymbolResolverError as exc:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: {exc}"
@@ -75,6 +77,13 @@ def generate_hook_registry(
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: hook symbol address "
                 f"0x{hook.address:08X} is outside the supplied image mapping"
+            )
+
+        if not (trampoline_start.address <= trampoline.address
+                and trampoline.address + 16 <= trampoline_end.address):
+            raise HookRegistrationError(
+                f"{declaration.declaration_id}: trampoline symbol "
+                f"{declaration.trampoline_symbol!r} is outside the linker-reserved section"
             )
 
         site_offset = site.address - base_address
