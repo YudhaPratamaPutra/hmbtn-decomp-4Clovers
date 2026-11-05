@@ -147,12 +147,6 @@ def main() -> None:
     p = sub.add_parser("jump-decode")
     p.add_argument("--pc", required=True, type=_int)
     p.add_argument("--word", required=True, type=_int)
-    p = sub.add_parser("hook-plan")
-    p.add_argument("--site", required=True, type=_int)
-    p.add_argument("--hook", required=True, type=_int)
-    p.add_argument("--trampoline", required=True, type=_int)
-    p.add_argument("--word0", required=True, type=_int)
-    p.add_argument("--word1", required=True, type=_int)
     p = sub.add_parser("jal-scan")
     p.add_argument("--input", required=True, type=Path)
     p.add_argument("--base", required=True, type=_int,
@@ -190,10 +184,6 @@ def main() -> None:
         print(f"0x{encode_jal(args.pc, args.target):08X}")
     elif args.cmd == "jump-decode":
         print(json.dumps(decode_jump(args.pc, args.word), indent=2))
-    elif args.cmd == "hook-plan":
-        plan = make_hook_plan(args.site, args.hook, args.trampoline,
-                              (args.word0, args.word1))
-        print(plan.to_json())
     elif args.cmd == "jal-scan":
         from tools.mips.jal import scan_jal
         found = scan_jal(args.input.read_bytes(), args.base,
