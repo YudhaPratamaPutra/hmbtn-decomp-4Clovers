@@ -87,9 +87,10 @@ region is unused or safe. It does not modify the game image.
 
 ## Hook registry
 
-Edit `hooks.json` to register future JAL and function-entry hook requests.
-The registry is intentionally empty until each original callsite/function,
-expected instruction bytes, runtime address, and target symbol are verified.
+For function-entry hooks, treat `hooks.json` as generated output rather than
+hand-maintained input. Update the C declaration and rerun `hook-register`
+whenever the linked image or linker map changes. JAL registrations remain
+explicit until a corresponding source-declaration format is implemented.
 
 ## Link-layout constraint
 
