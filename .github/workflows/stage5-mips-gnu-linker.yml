@@ -1,7 +1,13 @@
 name: Stage 5 MIPS GNU Linker
 
 on:
-  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/stage5-mips-gnu-linker.yml"
+      - "cmake/overlay.ld.in"
+      - "cmake/psx-toolchain.cmake"
+      - "tests/test_maspsx_trampoline_section.py"
+      - "tools/mips/symbols.py"
 
 permissions:
   contents: read
@@ -11,7 +17,7 @@ jobs:
     name: MIPS objects, GNU ld, and linker map
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout selected branch
+      - name: Checkout pull request
         uses: actions/checkout@v4
 
       - name: Install MIPS GNU binutils
