@@ -76,9 +76,10 @@ class TrampolineSectionTests(unittest.TestCase):
                 return block
 
             script.write_text(
-                "overlay_low = 0x80010000;\n"
+                "overlay_low = 0x80010000;\nSECTIONS {\n"
                 + overlay_block("11_GF_FARM", "farm.o")
-                + overlay_block("12_OTHER", "other.o"),
+                + overlay_block("12_OTHER", "other.o")
+                + "/DISCARD/ : { *(*); }\n}\n",
                 encoding="utf-8",
             )
             subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
