@@ -274,6 +274,10 @@ def main() -> None:
         from tools.mips.integration import (
             apply_integration_plan, build_integration_plan,
         )
+        if args.cmd == "integrate-apply":
+            print("[MIPS AUTO INTEGRATOR] INTEGRATION START")
+        elif args.cmd == "integrate-validate":
+            print("[MIPS AUTO INTEGRATOR] VALIDATION START")
         image = args.input.read_bytes()
         plan = build_integration_plan(
             image, base_address=args.base, overlay=args.overlay,
@@ -283,7 +287,6 @@ def main() -> None:
             print(json.dumps(plan.to_dict(), indent=2))
         elif args.cmd == "integrate-validate":
             from tools.mips.validation import validate_integrated_image
-            print("[MIPS AUTO INTEGRATOR] VALIDATION START")
             report = validate_integrated_image(image, args.patched.read_bytes(), plan)
             print("[MIPS AUTO INTEGRATOR] VALIDATION PASS")
             print(f"  Overlay: {plan.overlay}")
@@ -294,7 +297,7 @@ def main() -> None:
             print(f"  Original SHA-256: {report.original_sha256}")
             print(f"  Output SHA-256:   {report.output_sha256}")
         else:
-            print("[MIPS AUTO INTEGRATOR] INTEGRATION START")
+            print(f"[MIPS AUTO INTEGRATOR] PLAN READY - {len(plan.entries)} registry entries")
             output = apply_integration_plan(
                 image, plan, base_address=args.base, overlay=args.overlay,
                 registry_path=args.registry, map_path=args.map,
@@ -309,6 +312,8 @@ def main() -> None:
             print(f"  Output SHA-256: {output_sha256}")
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
+        if not args.json:
+            print(f"[MIPS AUTO INTEGRATOR] DISCOVERY START - {args.overlay.name}")
         inventory = discover_mod_sources(args.overlay)
         if args.json:
             print(json.dumps(inventory.to_dict(), indent=2))
