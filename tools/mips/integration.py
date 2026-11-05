@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .hook import HookEngineError, apply_hook_patch, plan_hook_patch
+from .analysis import analyze_mips_image
 from .jal import JalEngineError, apply_jal_patches, plan_jal_patch
 from .symbols import SymbolResolverError, load_linker_map, resolve_symbol
 
@@ -150,10 +151,14 @@ def build_integration_plan(
                 )
                 plans.append(("jal", patch))
                 occupied.append((offset, offset + 4, entry_id))
+                analysis = analyze_mips_image(
+                    image, base, start_offset=offset, end_offset=offset + 4,
+                ).to_dict()
                 rendered.append({
                     "id": entry_id, "type": "jal",
                     "site_symbol": site.name, "site_address": f"0x{site.address:08X}",
                     "target_symbol": target.name, "target_address": f"0x{target.address:08X}",
+                    "analysis": analysis,
                     "patch": patch.to_dict(),
                 })
             else:
@@ -210,6 +215,9 @@ def build_integration_plan(
                     expected_trampoline=trampoline_guard,
                 )
                 plans.append(("hook", patch))
+                analysis = analyze_mips_image(
+                    image, base, start_offset=site_offset, end_offset=site_offset + 8,
+                ).to_dict()
                 occupied.extend([
                     (site_offset, site_offset + 8, entry_id + ":site"),
                     (trampoline_offset, trampoline_offset + 16, entry_id + ":trampoline"),
@@ -218,6 +226,7 @@ def build_integration_plan(
                     "id": entry_id, "type": "hook",
                     "site_symbol": site.name, "site_address": f"0x{site.address:08X}",
                     "hook_symbol": hook.name, "hook_address": f"0x{hook.address:08X}",
+                    "analysis": analysis,
                     "patch": patch.to_dict(),
                 })
         except (SymbolResolverError, JalEngineError, HookEngineError) as exc:
