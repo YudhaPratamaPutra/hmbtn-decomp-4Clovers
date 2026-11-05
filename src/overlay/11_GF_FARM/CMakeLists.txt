@@ -1,7 +1,6 @@
 # 11_GF_FARM, an overlay (11_GF_FARM.bin in A_FILE). The source list is in link order.
-# Mod C files are discovered at configure time; adding/removing a file triggers CMake reconfigure.
-file(GLOB farm_mod_sources CONFIGURE_DEPENDS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/mod/*.c)
+# Optional mod C files are discovered at configure time; adding/removing one reconfigures CMake.
+psx_overlay_mod_sources(farm_mod_sources)
 
 psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
     SOURCES
