@@ -163,8 +163,8 @@ def build_integration_plan(
                 )
                 hook = resolve_symbol(symbols, item["hook_symbol"])
                 trampoline = resolve_symbol(symbols, item["trampoline_symbol"])
-                trampoline_start = resolve_symbol(symbols, "__mips_trampoline_start")
-                trampoline_end = resolve_symbol(symbols, "__mips_trampoline_end")
+                trampoline_start = resolve_symbol(symbols, f"__mips_trampoline_start_{overlay}")
+                trampoline_end = resolve_symbol(symbols, f"__mips_trampoline_end_{overlay}")
                 if base + site_offset != site.address:
                     raise IntegrationError(
                         f"{entry_id}: base + site_offset does not equal site symbol address"
