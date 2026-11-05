@@ -279,6 +279,28 @@ validation plan is a no-op: only an output byte-for-byte identical to the
 original image is valid.
 
 
+
+## Stage 11 — HOOK Integration into the Overlay Image
+
+The HOOK registry produced in Stage 10 is consumed by the same
+`build_integration_plan()` and `apply_integration_plan()` pipeline as JAL.
+For each HOOK entry, the planner resolves the exact site, hook function,
+trampoline symbol, and linker-reserved trampoline section from the map.
+It rejects a trampoline outside that reserved section and checks the
+original two site words and all 16 trampoline bytes against the supplied
+overlay image.
+
+Applying the plan writes the two-word jump at the registered site and the
+four-word trampoline at the declared trampoline offset. The generated
+sidecar overlay is then checked by `validate_integrated_image()`, which
+permits changes only in the registered eight-byte hook site and sixteen-byte
+trampoline range. The original overlay remains the input and is not replaced.
+
+The existing CMake target `mips-integrate-farm` connects discovery,
+HOOK/JAL registration, `integrate-apply`, and `integrate-validate`.
+Its output is `build/11_GF_FARM.mod.bin`; the original
+`build/11_GF_FARM.bin` remains unchanged.
+
 ## Stage 9 — MIPS Instruction Analysis
 
 The sequential scanner and decoder are connected through
