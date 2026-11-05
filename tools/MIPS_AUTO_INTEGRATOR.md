@@ -35,3 +35,18 @@ python3 -m unittest tests.test_mips_auto_integrator -v
 This is a foundation, not a persistent runtime manager. Runtime overlay lifecycle
 integration is intentionally out of scope until the loader path and module address
 mapping are verified from the original source and binary.
+
+## Overlay mod source discovery
+
+The FARM overlay now calls `psx_overlay_mod_sources(farm_mod_sources)`.
+CMake discovers every `src/overlay/11_GF_FARM/mod/*.c` file and appends it
+after the existing FARM source list. `CONFIGURE_DEPENDS` causes CMake to
+reconfigure when files are added or removed. The mod directory is also on the
+preprocessor include path, so headers can be included by name.
+
+The initial registry is
+`src/overlay/11_GF_FARM/mod/hooks.json`. It is intentionally empty. JAL/HOOK
+requests are not automatically patched yet: the next integration stage must
+resolve verified original symbols and mod symbols from the linker map, map
+runtime addresses to the exact overlay file offsets, and enforce expected
+original instruction bytes before changing any binary.
