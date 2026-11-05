@@ -76,9 +76,9 @@ class TrampolineSectionTests(unittest.TestCase):
                 return block
 
             script.write_text(
-                "MEMORY { overlay_low (rwx) : ORIGIN = 0x80010000, LENGTH = 0x1000 }\\n"
-                + overlay_block("11_GF_FARM", "farm.o")
-                + overlay_block("12_OTHER", "other.o"),
+                "MEMORY { overlay_low (rwx) : ORIGIN = 0x80010000, LENGTH = 0x1000 }\n"
+                + overlay_block("11_GF_FARM", str(farm_object))
+                + overlay_block("12_OTHER", str(other_object)),
                 encoding="utf-8",
             )
             subprocess.run([assembler, str(farm_source), "-o", str(farm_object)],
