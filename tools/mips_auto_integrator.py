@@ -192,6 +192,16 @@ def main() -> None:
     p = sub.add_parser("symbol-list")
     p.add_argument("--map", required=True, type=Path, help="GNU ld program.map")
     p.add_argument("--json", action="store_true", help="emit JSON")
+    for command in ("integrate-plan", "integrate-apply"):
+        p = sub.add_parser(command)
+        p.add_argument("--input", required=True, type=Path, help="exact overlay image to inspect")
+        p.add_argument("--base", required=True, type=_int,
+                       help="runtime address mapped to byte zero of the image")
+        p.add_argument("--overlay", required=True, help="overlay/module name")
+        p.add_argument("--registry", required=True, type=Path, help="hooks.json")
+        p.add_argument("--map", required=True, type=Path, help="matching GNU ld map")
+        if command == "integrate-apply":
+            p.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     if args.cmd == "jal-encode":
         print(f"0x{encode_jal(args.pc, args.target):08X}")
@@ -258,6 +268,29 @@ def main() -> None:
                 for row in rows:
                     addresses = ", ".join(item["address"] for item in row["definitions"])
                     print(f"{row['symbol']}: {addresses}")
+    elif args.cmd in ("integrate-plan", "integrate-apply"):
+        from tools.mips.integration import (
+            apply_integration_plan, build_integration_plan,
+        )
+        image = args.input.read_bytes()
+        plan = build_integration_plan(
+            image, base_address=args.base, overlay=args.overlay,
+            registry_path=args.registry, map_path=args.map,
+        )
+        if args.cmd == "integrate-plan":
+            print(json.dumps(plan.to_dict(), indent=2))
+        else:
+            output = apply_integration_plan(
+                image, plan, base_address=args.base, overlay=args.overlay,
+                registry_path=args.registry, map_path=args.map,
+            )
+            args.output.write_bytes(output)
+            print(json.dumps({
+                "output": str(args.output),
+                "input_sha256": plan.image_sha256,
+                "output_sha256": __import__("hashlib").sha256(output).hexdigest(),
+                "entry_count": len(plan.entries),
+            }, indent=2))
     elif args.cmd == "mod-discover":
         from tools.mips.discovery import discover_mod_sources
         inventory = discover_mod_sources(args.overlay)
