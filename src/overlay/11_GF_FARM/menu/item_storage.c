@@ -419,6 +419,9 @@ void item_anim_draw(u_long *ot, s16 posX, s16 posY, s32 value) {
     s32 count;
     AnimState *sprite;
 
+    if (value < 2) {
+        return;
+    }
     x = posX;
     y = posY;
     sprite = &ui_icon_anim;
