@@ -98,6 +98,8 @@ def write_jal_registry(overlay_dir: str | Path, output_path: str | Path, *,
     )
     destination = Path(output_path)
     hooks: list[dict[str, Any]] = []
+    generated_by_id = {entry["id"]: entry for entry in generated["jal"]}
+    generated_sites = {entry["site_symbol"] for entry in generated["jal"]}
     if destination.exists():
         try:
             existing = json.loads(destination.read_text(encoding="utf-8"))
@@ -108,6 +110,7 @@ def write_jal_registry(overlay_dir: str | Path, output_path: str | Path, *,
                 or not isinstance(existing.get("hooks"), list)):
             raise JalRegistrationError("existing registry has an incompatible schema or module")
         seen_ids: set[str] = set()
+        seen_sites: set[str] = set()
         for index, entry in enumerate(existing["hooks"]):
             if not isinstance(entry, dict) or entry.get("type") not in ("jal", "hook"):
                 raise JalRegistrationError(f"existing registry hooks[{index}] is invalid")
@@ -116,20 +119,22 @@ def write_jal_registry(overlay_dir: str | Path, output_path: str | Path, *,
                 raise JalRegistrationError(f"existing registry hooks[{index}] has an invalid or duplicate id")
             seen_ids.add(ident)
             if entry["type"] == "hook":
+                if ident in generated_by_id:
+                    raise JalRegistrationError(f"generated JAL id conflicts with existing hook id: {ident}")
                 hooks.append(entry)
+            elif ident in generated_by_id:
+                # Rebuild this declaration's JAL record from the current map and image.
+                continue
             else:
+                site = entry.get("site_symbol")
+                if site in generated_sites:
+                    raise JalRegistrationError(f"generated JAL site conflicts with existing registry entry: {site}")
                 hooks.append(entry)
-        generated_ids = {entry["id"] for entry in generated["jal"]}
-        conflicts = seen_ids & generated_ids
-        if conflicts:
-            raise JalRegistrationError(
-                "generated JAL id conflicts with existing registry id: "
-                + ", ".join(sorted(conflicts))
-            )
+        hooks.extend(generated["jal"])
     result = {
         "schema_version": 1,
         "module": generated["module"],
-        "hooks": hooks + generated["jal"],
+        "hooks": hooks,
     }
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".tmp")
