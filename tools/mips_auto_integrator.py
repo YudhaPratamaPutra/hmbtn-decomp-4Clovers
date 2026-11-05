@@ -153,15 +153,50 @@ def main() -> None:
     p.add_argument("--trampoline", required=True, type=_int)
     p.add_argument("--word0", required=True, type=_int)
     p.add_argument("--word1", required=True, type=_int)
+    p = sub.add_parser("jal-scan")
+    p.add_argument("--input", required=True, type=Path)
+    p.add_argument("--base", required=True, type=_int,
+                   help="runtime address mapped to byte zero of input")
+    p.add_argument("--start", type=_int, default=0)
+    p.add_argument("--end", type=_int)
+    p.add_argument("--target", type=_int)
+    p = sub.add_parser("jal-patch")
+    p.add_argument("--input", required=True, type=Path)
+    p.add_argument("--output", required=True, type=Path)
+    p.add_argument("--base", required=True, type=_int,
+                   help="runtime address mapped to byte zero of input")
+    p.add_argument("--offset", required=True, type=_int,
+                   help="file offset of the JAL instruction")
+    p.add_argument("--target", required=True, type=_int,
+                   help="replacement runtime target")
+    p.add_argument("--expected-word", required=True, type=_int)
+    p.add_argument("--expected-target", type=_int)
     args = parser.parse_args()
     if args.cmd == "jal-encode":
         print(f"0x{encode_jal(args.pc, args.target):08X}")
     elif args.cmd == "jump-decode":
         print(json.dumps(decode_jump(args.pc, args.word), indent=2))
-    else:
+    elif args.cmd == "hook-plan":
         plan = make_hook_plan(args.site, args.hook, args.trampoline,
                               (args.word0, args.word1))
         print(plan.to_json())
+    elif args.cmd == "jal-scan":
+        from tools.mips.jal import scan_jal
+        found = scan_jal(args.input.read_bytes(), args.base,
+                         start_offset=args.start, end_offset=args.end,
+                         target=args.target)
+        print(json.dumps([item.to_dict() for item in found], indent=2))
+    else:
+        from tools.mips.jal import apply_jal_patches, plan_jal_patch
+        image = args.input.read_bytes()
+        patch = plan_jal_patch(
+            image, args.offset, args.base, args.target,
+            expected_word=args.expected_word,
+            expected_target=args.expected_target,
+        )
+        output = apply_jal_patches(image, [patch])
+        args.output.write_bytes(output)
+        print(json.dumps(patch.to_dict(), indent=2))
 
 
 if __name__ == "__main__":
