@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from tools.maspsx.maspsx import MaspsxProcessor
+from tools.mips.symbols import load_linker_map, resolve_symbol
 
 
 class TrampolineSectionTests(unittest.TestCase):
@@ -124,6 +125,23 @@ class TrampolineSectionTests(unittest.TestCase):
             self.assertEqual(other_end - other_start, 16)
             self.assertTrue(farm_start <= symbol_addresses["farm_trampoline"] < farm_end)
             self.assertTrue(other_start <= symbol_addresses["other_trampoline"] < other_end)
+            linker_symbols = load_linker_map(root / "fixture.map")
+            self.assertEqual(
+                resolve_symbol(linker_symbols, "__mips_trampoline_start_11_GF_FARM").address,
+                farm_start,
+            )
+            self.assertEqual(
+                resolve_symbol(linker_symbols, "__mips_trampoline_end_11_GF_FARM").address,
+                farm_end,
+            )
+            self.assertEqual(
+                resolve_symbol(linker_symbols, "farm_trampoline").address,
+                symbol_addresses["farm_trampoline"],
+            )
+            self.assertEqual(
+                resolve_symbol(linker_symbols, "other_trampoline").address,
+                symbol_addresses["other_trampoline"],
+            )
 
     def test_maspsx_preserves_trampoline_section_and_storage_directives(self):
         source = [
