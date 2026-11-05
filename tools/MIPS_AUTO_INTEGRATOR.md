@@ -446,3 +446,44 @@ dependency. The original linked overlay BIN is not overwritten.
 The packaging unit tests verify that a listed member comes from the integrated
 sidecar, unlisted built members remain sourced from the build directory, and
 original members remain sourced from the original directory.
+
+## Stage 24 — Final Pipeline Audit
+
+The final source audit confirms that the three integration paths converge on
+`tools/mips/integration.py`:
+
+- JAL declarations are discovered and registered from mod source, linker-map
+  symbols, and the exact overlay image.
+- HOOK declarations are discovered and registered from mod source, linker-map
+  symbols, the exact overlay image, and the linker-reserved trampoline symbols.
+- MIPS analysis decodes the exact overlay image using the explicit runtime base.
+  The integration planner also includes focused instruction analysis for each
+  registered JAL and HOOK site.
+
+The generic CMake target runs overlay discovery, mod discovery, MIPS analysis,
+JAL/HOOK discovery, HOOK registration, JAL registration, integration planning,
+apply, and validation in sequence. It depends on `program`, which produces the
+matching overlay BIN and `program.map`.
+
+When the `afile` target exists, it depends on every eligible overlay integration
+target. Each validated sidecar is copied to
+`integrated_A_FILE/<A_FILE member filename>`; the explicit member manifest
+selects those sidecars in `tools/afile.py pack`. The resulting A_FILE is then
+used as the replacement `A_FILE.BIN` and `A_FILE.HDT` input when the disc
+image is built.
+
+The fixture tests cover JAL and HOOK declaration-to-apply flows, MIPS decoding
+and analysis, CMake target/dependency generation, sidecar selection, and A_FILE
+member packing. They do not replace a full production build.
+
+### Outstanding production checks
+
+- A production build must provide the actual overlay BIN and matching
+  `program.map` before symbol resolution, trampoline placement, and integrated
+  sidecar bytes can be examined against the real linked image.
+- The current checked-in FARM registry starts with an empty `hooks` array;
+  generated entries depend on the actual build inputs and source declarations.
+- The real-disc A_FILE and ROM packaging checks remain deferred until after
+  Stage 25 and merge to the main branch, as agreed.
+- No runtime game test has been performed. Fixture tests cannot establish
+  in-game behavior.
