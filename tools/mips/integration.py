@@ -40,11 +40,11 @@ class IntegrationPlan:
 
 
 def _integer(value: Any, field: str) -> int:
-    if isinstance(value, bool):
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
         raise IntegrationError(f"{field} must be an integer or hexadecimal string")
     try:
-        result = int(value, 0) if isinstance(value, str) else int(value)
-    except (TypeError, ValueError) as exc:
+        result = int(value, 0) if isinstance(value, str) else value
+    except ValueError as exc:
         raise IntegrationError(f"{field} must be an integer or hexadecimal string") from exc
     if result < 0 or result > 0xFFFFFFFF:
         raise IntegrationError(f"{field} is outside the unsigned 32-bit range")
@@ -84,8 +84,9 @@ def build_integration_plan(
     registry_path: str | Path, map_path: str | Path,
 ) -> IntegrationPlan:
     """Resolve every registry symbol and validate every patch against one image."""
-    if not isinstance(image, bytes):
-        image = bytes(image)
+    if not isinstance(image, (bytes, bytearray, memoryview)):
+        raise IntegrationError("image must be bytes-like")
+    image = bytes(image)
     base = _integer(base_address, "base_address")
     if base & 3:
         raise IntegrationError("base_address must be 4-byte aligned")
