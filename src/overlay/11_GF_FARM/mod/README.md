@@ -41,7 +41,6 @@ It does not apply hooks or patch binaries.
 Declare a hook directly above the mod function definition with a block comment:
 
 ```c
-/* MIPS_AUTO_HOOK: {"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state","trampoline_symbol":"crop_pass_trampoline"} */
 #include "mips_auto_hook.h"
 MIPS_AUTO_HOOK_TRAMPOLINE(crop_pass_trampoline);
 
