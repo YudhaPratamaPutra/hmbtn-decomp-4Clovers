@@ -30,13 +30,13 @@ class JalIntegrationPipelineTests(unittest.TestCase):
         self.original_image = bytes(image)
         self.image_path.write_bytes(self.original_image)
         self.map_path.write_text(
-            f"0x{self.site:08X} farm_callsite\\n"
-            f"0x{self.target:08X} mod_target\\n",
+            f"0x{self.site:08X} farm_callsite\n"
+            f"0x{self.target:08X} mod_target\n",
             encoding="utf-8",
         )
         (self.overlay / "mod" / "calls.c").write_text(
             '/* MIPS_AUTO_JAL: {"id":"farm-call","type":"jal",'
-            '"site_symbol":"farm_callsite","target_symbol":"mod_target"} */\\n',
+            '"site_symbol":"farm_callsite","target_symbol":"mod_target"} */\n',
             encoding="utf-8",
         )
 
