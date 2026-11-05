@@ -1,7 +1,19 @@
 name: MIPS V9 Unit Tests
 
 on:
+  pull_request:
+    paths:
+      - "tools/mips/**"
+      - "tools/mips_auto_integrator.py"
+      - "tests/**"
+      - "cmake/overlay.ld.in"
+      - "src/overlay/**/mod/**"
+      - ".github/workflows/mips-v9-unit-tests.yml"
+
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   unit-tests:
