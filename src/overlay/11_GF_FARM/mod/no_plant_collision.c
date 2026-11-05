@@ -6,6 +6,7 @@
  */
 #include "farm_state.h"
 #include "farm_tables.h"
+#include "field.h"
 #include "items.h"
 #include "mips_auto_hook.h"
 
