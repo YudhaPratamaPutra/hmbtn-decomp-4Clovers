@@ -67,6 +67,13 @@ add_custom_target(mips-integrate-farm
         mod-discover
         --overlay ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
+        hook-register
+        --overlay ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM
+        --map ${CMAKE_BINARY_DIR}/program.map
+        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
+        --base 0x800B7E20
+        --output ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
         integrate-apply
         --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
         --output ${CMAKE_BINARY_DIR}/11_GF_FARM.mod.bin

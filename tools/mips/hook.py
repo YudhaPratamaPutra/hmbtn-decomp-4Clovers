@@ -21,7 +21,8 @@ class HookEngineError(ValueError):
 
 
 def _check_address(value: int, name: str) -> None:
-    if not isinstance(value, int) or value < 0 or value > MASK32 or value & 3:
+    if (isinstance(value, bool) or not isinstance(value, int)
+            or value < 0 or value > MASK32 or value & 3):
         raise HookEngineError(f"{name} must be an aligned unsigned 32-bit address")
 
 
@@ -64,12 +65,17 @@ def plan_hook_patch(data: bytes, *, site_offset: int, site_pc: int,
                     expected_original_words: tuple[int, int],
                     expected_trampoline: bytes) -> HookPatchPlan:
     """Plan an 8-byte entry hook and 16-byte trampoline with exact byte guards."""
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise HookEngineError("image must be bytes-like")
+    data = bytes(data)
     for value, name in ((site_pc, "site_pc"), (hook_pc, "hook_pc"),
                         (trampoline_pc, "trampoline_pc")):
         _check_address(value, name)
-    if not isinstance(site_offset, int) or site_offset < 0 or site_offset & 3:
+    if (isinstance(site_offset, bool) or not isinstance(site_offset, int)
+            or site_offset < 0 or site_offset & 3):
         raise HookEngineError("site_offset must be a non-negative aligned file offset")
-    if not isinstance(trampoline_offset, int) or trampoline_offset < 0 or trampoline_offset & 3:
+    if (isinstance(trampoline_offset, bool) or not isinstance(trampoline_offset, int)
+            or trampoline_offset < 0 or trampoline_offset & 3):
         raise HookEngineError("trampoline_offset must be a non-negative aligned file offset")
     if site_offset + HOOK_SIZE > len(data):
         raise HookEngineError("hook site is outside the supplied image")
@@ -78,8 +84,11 @@ def plan_hook_patch(data: bytes, *, site_offset: int, site_pc: int,
     if not (site_offset + HOOK_SIZE <= trampoline_offset
             or trampoline_offset + TRAMPOLINE_SIZE <= site_offset):
         raise HookEngineError("hook site and trampoline storage overlap")
-    if len(expected_original_words) != 2:
-        raise HookEngineError("exactly two expected original instructions are required")
+    if (not isinstance(expected_original_words, (tuple, list))
+            or len(expected_original_words) != 2
+            or any(isinstance(word, bool) or not isinstance(word, int)
+                   or word < 0 or word > MASK32 for word in expected_original_words)):
+        raise HookEngineError("expected_original_words must contain two unsigned 32-bit words")
     if len(expected_trampoline) != TRAMPOLINE_SIZE:
         raise HookEngineError("expected_trampoline must contain exactly 16 bytes")
 
@@ -122,9 +131,15 @@ def apply_hook_patch(data: bytes, plan: HookPatchPlan) -> bytes:
     """Apply hook and trampoline atomically after revalidating all source bytes."""
     if not isinstance(data, (bytes, bytearray, memoryview)):
         raise HookEngineError("image must be bytes-like")
-    if plan.site_offset < 0 or plan.site_offset & 3 or plan.site_offset + HOOK_SIZE > len(data):
+    if not isinstance(plan, HookPatchPlan):
+        raise HookEngineError("plan must be a HookPatchPlan instance")
+    if (isinstance(plan.site_offset, bool) or not isinstance(plan.site_offset, int)
+            or plan.site_offset < 0 or plan.site_offset & 3
+            or plan.site_offset + HOOK_SIZE > len(data)):
         raise HookEngineError("hook patch record has an invalid site offset")
-    if (plan.trampoline_offset < 0 or plan.trampoline_offset & 3
+    if (isinstance(plan.trampoline_offset, bool)
+            or not isinstance(plan.trampoline_offset, int)
+            or plan.trampoline_offset < 0 or plan.trampoline_offset & 3
             or plan.trampoline_offset + TRAMPOLINE_SIZE > len(data)):
         raise HookEngineError("hook patch record has an invalid trampoline offset")
     if not (plan.site_offset + HOOK_SIZE <= plan.trampoline_offset

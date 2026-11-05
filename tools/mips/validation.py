@@ -74,11 +74,13 @@ def _range(offset: int, size: int, image_size: int, label: str) -> tuple[int, in
 
 
 def validate_integrated_image(
-    original: bytes, output: bytes, plan: IntegrationPlan,
+    original: bytes | bytearray, output: bytes | bytearray, plan: IntegrationPlan,
 ) -> ValidationReport:
     """Verify hashes, exact planned bytes, image size, and all untouched bytes."""
-    if not isinstance(original, bytes) or not isinstance(output, bytes):
-        raise ValidationError("original and output images must be bytes")
+    if not isinstance(original, (bytes, bytearray)) or not isinstance(output, (bytes, bytearray)):
+        raise ValidationError("original and output images must be bytes or bytearray")
+    original = bytes(original)
+    output = bytes(output)
     if not isinstance(plan, IntegrationPlan):
         raise ValidationError("plan must be an IntegrationPlan instance")
     if len(original) != len(output):
@@ -156,21 +158,27 @@ def validate_integrated_image(
         index for index, (before, after) in enumerate(zip(original, output))
         if before != after
     ]
-    changed_ranges: list[tuple[int, int]] = []
+    actual_changed_ranges: list[tuple[int, int]] = []
     for offset in changed_offsets:
-        if changed_ranges and offset == changed_ranges[-1][1]:
-            start, _ = changed_ranges[-1]
-            changed_ranges[-1] = (start, offset + 1)
+        if actual_changed_ranges and offset == actual_changed_ranges[-1][1]:
+            start, _ = actual_changed_ranges[-1]
+            actual_changed_ranges[-1] = (start, offset + 1)
         else:
-            changed_ranges.append((offset, offset + 1))
+            actual_changed_ranges.append((offset, offset + 1))
 
-    for start, end in changed_ranges:
+    for start, end in actual_changed_ranges:
         if not any(start >= allowed_start and end <= allowed_end
                    for allowed_start, allowed_end, _ in authorized):
             raise ValidationError(
                 f"unexpected modification outside authorized patch ranges at "
                 f"0x{start:X}-0x{end:X}"
             )
+
+    # Report complete authorized patch units, but only when bytes changed.
+    changed_ranges = [
+        (start, end) for start, end, _ in authorized
+        if original[start:end] != output[start:end]
+    ]
 
     return ValidationReport(
         original_sha256=original_hash,

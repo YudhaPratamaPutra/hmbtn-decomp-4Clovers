@@ -61,9 +61,17 @@ def _decode_jal(pc: int, word: int) -> int:
     return (((pc + 4) & 0xF0000000) | ((word & 0x03FFFFFF) << 2)) & MASK32
 
 
+def _require_integer(value: int, name: str, maximum: int = MASK32) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise JalEngineError(f"{name} must be an integer")
+    if value < 0 or value > maximum:
+        raise JalEngineError(f"{name} is outside the allowed range")
+    return value
+
+
 def _encode_jal(pc: int, target: int) -> int:
-    if pc < 0 or pc > MASK32 or target < 0 or target > MASK32:
-        raise JalEngineError("PC and target must be unsigned 32-bit addresses")
+    _require_integer(pc, "PC")
+    _require_integer(target, "target")
     if pc & 3 or target & 3:
         raise JalEngineError("PC and target must be 4-byte aligned")
     if ((pc + 4) & 0xF0000000) != (target & 0xF0000000):
@@ -76,7 +84,14 @@ def scan_jal(data: bytes, base_address: int, *, start_offset: int = 0,
     """Scan aligned words for JAL. base_address maps data[0] to runtime memory."""
     if not isinstance(data, (bytes, bytearray, memoryview)):
         raise JalEngineError("data must be bytes-like")
-    if base_address < 0 or base_address > MASK32 or base_address & 3:
+    data = bytes(data)
+    _require_integer(base_address, "base_address")
+    _require_integer(start_offset, "start_offset")
+    if end_offset is not None:
+        _require_integer(end_offset, "end_offset")
+    if target is not None:
+        _require_integer(target, "target")
+    if base_address & 3:
         raise JalEngineError("base_address must be an aligned unsigned 32-bit address")
     end = (len(data) & ~3) if end_offset is None else end_offset
     if start_offset < 0 or end < start_offset or end > len(data):
@@ -104,12 +119,19 @@ def plan_jal_patch(data: bytes, file_offset: int, base_address: int,
                    new_target: int, *, expected_word: int,
                    expected_target: int | None = None) -> JalPatch:
     """Create a patch record only when the existing word is the expected JAL."""
-    if file_offset < 0 or file_offset & 3 or file_offset + 4 > len(data):
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise JalEngineError("data must be bytes-like")
+    data = bytes(data)
+    _require_integer(file_offset, "file_offset")
+    _require_integer(base_address, "base_address")
+    _require_integer(new_target, "new_target")
+    _require_integer(expected_word, "expected_word")
+    if expected_target is not None:
+        _require_integer(expected_target, "expected_target")
+    if file_offset & 3 or file_offset + 4 > len(data):
         raise JalEngineError("callsite offset is unaligned or outside the image")
-    if base_address < 0 or base_address > MASK32 or base_address & 3:
+    if base_address & 3:
         raise JalEngineError("base_address must be an aligned unsigned 32-bit address")
-    if expected_word < 0 or expected_word > MASK32:
-        raise JalEngineError("expected_word must be an unsigned 32-bit instruction")
     actual = struct.unpack_from("<I", data, file_offset)[0]
     if actual != expected_word:
         raise JalEngineError(
@@ -130,8 +152,22 @@ def plan_jal_patch(data: bytes, file_offset: int, base_address: int,
 
 def apply_jal_patches(data: bytes, patches: list[JalPatch]) -> bytes:
     """Apply a batch atomically after validating every original word and overlap."""
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise JalEngineError("data must be bytes-like")
+    data = bytes(data)
+    if not isinstance(patches, list):
+        raise JalEngineError("patches must be a list of JalPatch records")
     seen = set()
     for patch in patches:
+        if not isinstance(patch, JalPatch):
+            raise JalEngineError("patches must contain only JalPatch records")
+        _require_integer(patch.file_offset, "patch file_offset")
+        _require_integer(patch.base_address, "patch base_address")
+        _require_integer(patch.pc, "patch PC")
+        _require_integer(patch.old_target, "patch old_target")
+        _require_integer(patch.new_target, "patch new_target")
+        _require_integer(patch.expected_word, "patch expected_word")
+        _require_integer(patch.replacement_word, "patch replacement_word")
         if patch.file_offset in seen:
             raise JalEngineError(f"duplicate patch offset 0x{patch.file_offset:X}")
         seen.add(patch.file_offset)
