@@ -59,46 +59,8 @@ add_subdirectory(src/overlay/31_gf_mcard)
 psx_program()
 
 
-# Optional, explicit MIPS mod integration for FARM. This target is deliberately
-# separate from the default build: it writes a sidecar image and validates it
-# without replacing the original overlay or A_FILE.
-add_custom_target(mips-integrate-farm
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
-        mod-discover
-        --overlay ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
-        hook-register
-        --overlay ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM
-        --map ${CMAKE_BINARY_DIR}/program.map
-        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
-        --base 0x800B7E20
-        --output ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
-        jal-register
-        --overlay ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM
-        --map ${CMAKE_BINARY_DIR}/program.map
-        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
-        --base 0x800B7E20
-        --output ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
-        integrate-apply
-        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
-        --output ${CMAKE_BINARY_DIR}/11_GF_FARM.mod.bin
-        --base 0x800B7E20
-        --overlay 11_GF_FARM
-        --registry ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
-        --map ${CMAKE_BINARY_DIR}/program.map
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/mips_auto_integrator.py
-        integrate-validate
-        --input ${CMAKE_BINARY_DIR}/11_GF_FARM.bin
-        --patched ${CMAKE_BINARY_DIR}/11_GF_FARM.mod.bin
-        --base 0x800B7E20
-        --overlay 11_GF_FARM
-        --registry ${CMAKE_SOURCE_DIR}/src/overlay/11_GF_FARM/mod/hooks.json
-        --map ${CMAKE_BINARY_DIR}/program.map
-    COMMENT "MIPS Auto Integrator: discovery, integration, and validation for FARM"
-    VERBATIM)
-add_dependencies(mips-integrate-farm program)
+# Add one opt-in integration pipeline for every overlay that owns a mod/ directory.
+psx_overlay_mips_integration_targets()
 
 # A_FILE and the disc, from the original disc's data (-DORIGINAL_DISC=).
 include(cmake/disc.cmake)
