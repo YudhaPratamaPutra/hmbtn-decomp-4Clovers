@@ -7,7 +7,11 @@
 #include "farm_state.h"
 #include "farm_tables.h"
 #include "items.h"
+#include "mips_auto_hook.h"
 
+MIPS_AUTO_HOOK_TRAMPOLINE(farm_tile_state_trampoline);
+
+/* MIPS_AUTO_HOOK: {"id":"farm-no-plant-collision","type":"hook","site_symbol":"farm_tile_state","trampoline_symbol":"farm_tile_state_trampoline"} */
 s32 mod_farm_tile_state(s16 column, s16 row, s32 mode)
 {
     FarmFieldTile *record;
