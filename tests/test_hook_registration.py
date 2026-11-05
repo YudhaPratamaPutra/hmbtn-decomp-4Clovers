@@ -60,9 +60,10 @@ class HookRegistrationTests(unittest.TestCase):
         self.assertEqual(entry["expected_words"], ["0x27BDFFF0", "0xAFBF000C"])
         self.assertEqual(entry["expected_trampoline"], "00" * 16)
 
-    def test_requires_explicit_trampoline_offset(self):
+    def test_requires_trampoline_symbol_declaration(self):
         self._source(
-            '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state"}'
+            '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
+            '"trampoline_symbol":"not_in_map"}'
         )
         with self.assertRaises(HookRegistrationError):
             generate_hook_registry(
@@ -95,7 +96,7 @@ class HookRegistrationTests(unittest.TestCase):
     def test_writes_registry_only_after_successful_generation(self):
         self._source(
             '{"id":"crop-pass","type":"hook","site_symbol":"farm_tile_state",'
-            '"trampoline_offset":96}'
+            '"trampoline_symbol":"crop_pass_trampoline"}'
         )
         output = self.overlay / "mod" / "hooks.json"
         existing = {
