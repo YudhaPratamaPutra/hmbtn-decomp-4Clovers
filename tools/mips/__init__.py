@@ -8,6 +8,7 @@ from .hook import (
     HookEngineError, HookPatchPlan, apply_hook_patch,
     hook_plan_to_json, plan_hook_patch,
 )
+from .discovery import ModDiscoveryError, ModInventory, discover_mod_sources
 
 __all__ = [
     "Instruction", "MipsDecodeError", "decode", "encode_i", "encode_j", "encode_r",
@@ -15,4 +16,5 @@ __all__ = [
     "plan_jal_patch", "apply_jal_patches", "patches_to_json",
     "HookEngineError", "HookPatchPlan", "plan_hook_patch",
     "apply_hook_patch", "hook_plan_to_json",
+    "ModDiscoveryError", "ModInventory", "discover_mod_sources",
 ]
