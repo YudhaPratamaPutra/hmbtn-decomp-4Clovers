@@ -79,7 +79,7 @@ def generate_hook_registry(
                 f"0x{hook.address:08X} is outside the supplied image mapping"
             )
 
-        if (trampoline_start.address > trampoline_end.address:
+        if trampoline_start.address > trampoline_end.address:
             raise HookRegistrationError(
                 f"{declaration.declaration_id}: linker-reserved trampoline section has reversed bounds"
             )
