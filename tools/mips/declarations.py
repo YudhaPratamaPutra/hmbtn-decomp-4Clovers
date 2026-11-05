@@ -27,6 +27,7 @@ class HookDeclaration:
     site_symbol: str
     source: str
     line: int
+    trampoline_offset: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -36,6 +37,8 @@ class HookDeclaration:
             "hook_symbol": self.hook_symbol,
             "source": self.source,
             "line": self.line,
+            **({"trampoline_offset": self.trampoline_offset}
+               if self.trampoline_offset is not None else {}),
         }
 
 
@@ -146,8 +149,9 @@ def scan_hook_declarations(
 
     for start, end, metadata in _comment_declarations(source_text):
         allowed = {"id", "type", "site_symbol", "trampoline_offset"}
+        required = {"id", "type", "site_symbol"}
         extra = set(metadata) - allowed
-        missing = allowed - set(metadata)
+        missing = required - set(metadata)
         if missing or extra:
             details = []
             if missing:
@@ -163,7 +167,27 @@ def scan_hook_declarations(
             raise HookDeclarationError("hook declaration id must be a non-empty string")
         if not isinstance(site_symbol, str) or not _IDENTIFIER.fullmatch(site_symbol):
             raise HookDeclarationError("site_symbol must be a C/linker identifier")
-        if trampoline_offset is not None:\n            if isinstance(trampoline_offset, bool):\n                raise HookDeclarationError("trampoline_offset must be a non-negative aligned integer")\n            try:\n                trampoline_offset = int(trampoline_offset, 0) if isinstance(trampoline_offset, str) else int(trampoline_offset)\n            except (TypeError, ValueError) as exc:\n                raise HookDeclarationError("trampoline_offset must be a non-negative aligned integer") from exc\n            if trampoline_offset < 0 or trampoline_offset > 0xFFFFFFFF or trampoline_offset & 3:\n                raise HookDeclarationError("trampoline_offset must be a non-negative aligned integer")\n        if declaration_id in seen_ids:
+        trampoline_offset = metadata.get("trampoline_offset")
+        if trampoline_offset is not None:
+            if isinstance(trampoline_offset, bool):
+                raise HookDeclarationError(
+                    "trampoline_offset must be a non-negative aligned integer"
+                )
+            try:
+                trampoline_offset = (
+                    int(trampoline_offset, 0)
+                    if isinstance(trampoline_offset, str)
+                    else int(trampoline_offset)
+                )
+            except (TypeError, ValueError) as exc:
+                raise HookDeclarationError(
+                    "trampoline_offset must be a non-negative aligned integer"
+                ) from exc
+            if (trampoline_offset < 0 or trampoline_offset > 0xFFFFFFFF
+                    or trampoline_offset & 3):
+                raise HookDeclarationError(
+                    "trampoline_offset must be a non-negative aligned integer"
+                )\n        if declaration_id in seen_ids:
             raise HookDeclarationError(f"duplicate hook declaration id: {declaration_id}")
         if site_symbol in seen_sites:
             raise HookDeclarationError(f"duplicate hook target declaration: {site_symbol}")
@@ -188,7 +212,8 @@ def scan_hook_declarations(
         hook_symbol = match.group(1)
         line_number = source_text.count("\n", 0, start) + 1
         found.append(HookDeclaration(
-            declaration_id, hook_symbol, site_symbol, source_name, line_number
+            declaration_id, hook_symbol, site_symbol, source_name, line_number,
+            trampoline_offset
         ))
     return found
 
