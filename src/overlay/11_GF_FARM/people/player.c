@@ -4760,10 +4760,15 @@ s32 player_show_item(FarmStoredItem *item)
     return 0;
 }
 
-/* Keep carrying: once the last item slot is free, put the carried item away. */
+/* Merge a carried item into matching rucksack stacks before using a free slot.
+ * Each stack is capped at 99; any remainder stays in the player's hand. */
 static void player_carry_tick(void)
 {
     FarmPlayer *player = &game_state.player;
+    FarmStoredItem *stored;
+    s32 i;
+    s32 amount;
+    s32 space;
 
     if (!(player->stateFlags & PLAYER_FLAG_CARRY_ITEM))
     {
@@ -4771,6 +4776,32 @@ static void player_carry_tick(void)
         return;
     }
     player_compact_items();
+    if (item_category(player->held[HELD_ITEM].id) != ITEM_CATEGORY_TOOL)
+    {
+        for (i = 0; i < player->itemSlots; i++)
+        {
+            stored = &player->items[i];
+            if (stored->id != player->held[HELD_ITEM].id || stored->count >= 99)
+            {
+                continue;
+            }
+            space = 99 - stored->count;
+            amount = player->held[HELD_ITEM].count;
+            if (amount > space)
+            {
+                amount = space;
+            }
+            stored->count += amount;
+            player->held[HELD_ITEM].count -= amount;
+            if (player->held[HELD_ITEM].count == 0)
+            {
+                stored_item_clear(&player->held[HELD_ITEM]);
+                player->stateFlags &= ~(PLAYER_FLAG_CARRY_BIG_ITEM | PLAYER_FLAG_CARRY_ITEM | PLAYER_FLAG_SHOWING_ITEM);
+                player_reset_pose();
+                return;
+            }
+        }
+    }
     if (player->items[player->itemSlots - 1].id == 0)
     {
         sound_play(8);
