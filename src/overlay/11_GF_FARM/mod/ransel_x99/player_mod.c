@@ -65,6 +65,10 @@
 #include "ui_icons.h"
 #include "villager.h"
 #include "weather.h"
+#include "mips_auto_hook.h"
+
+/* Trampoline storage (16 bytes) reserved in .mips_trampoline.11_GF_FARM. */
+MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_trampoline);
 
 typedef struct FarmHopStep {
     s16  dx;
