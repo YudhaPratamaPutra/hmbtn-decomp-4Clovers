@@ -8,8 +8,8 @@
  *   - people/player.c ASLI tetap dibangun utuh, tidak diubah.
  *   - File ini hanya menambah satu hook bernama MIPS_AUTO_HOOK ke fungsi
  *     player_frame_update. Integrator menukar 8 byte pertama fungsi asli
- *     dengan \`J mod_ransel_x99_frame_update; nop\`, dan menulis 2 instruksi
- *     asli yang tergeser + \`J player_frame_update+8\` ke slot trampoline.
+ *     dengan `J mod_ransel_x99_frame_update; nop`, dan menulis 2 instruksi
+ *     asli yang tergeser + `J player_frame_update+8` ke slot trampoline.
  *   - Setelah logika mod, hook memanggil trampoline sehingga isi asli
  *     player_frame_update tetap dijalankan selalu (body tidak pernah hilang).
  *   - Logika mod hanya berjalan saat gameplay normal dan player benar-benar
