@@ -67,8 +67,11 @@
 #include "weather.h"
 #include "mips_auto_hook.h"
 
-/* Trampoline storage (16 bytes) reserved in .mips_trampoline.11_GF_FARM. */
-MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_trampoline);
+/* Trampoline storages: one 16-byte slot per hook, reserved in the
+ * linker-owned .mips_trampoline.11_GF_FARM section. Never shared between
+ * hooks: the integrator rejects overlapping trampoline ranges. */
+MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_frame_trampoline);
+MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_run_trampoline);
 
 
 
@@ -83,9 +86,7 @@ MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_trampoline);
 /* Hook 1: player_frame_update - dipanggil setiap frame
  * Fungsi mod akan mengecek apakah player sedang membawa item,
  * jika iya maka coba simpan ke rucksack. */
-/* MIPS_AUTO_HOOK: {"id":"ransel-x99-frame-update","type":"hook",
- *   "site_symbol":"player_frame_update",
- *   "trampoline_symbol":"ransel_x99_trampoline"} */
+/* MIPS_AUTO_HOOK: {"id":"ransel-x99-frame-update","type":"hook","site_symbol":"player_frame_update","trampoline_symbol":"ransel_x99_frame_trampoline"} */
 s32 mod_ransel_x99_frame_update(void)
 {
     FarmPlayer *player = &game_state.player;
@@ -98,9 +99,7 @@ s32 mod_ransel_x99_frame_update(void)
 
 /* Hook 2: player_run_action - dipanggil saat aksi player dijalankan
  * Saat ini hanya lolos ke kode asli (no-op), aman untuk dipelajari nanti. */
-/* MIPS_AUTO_HOOK: {"id":"ransel-x99-run-action","type":"hook",
- *   "site_symbol":"player_run_action",
- *   "trampoline_symbol":"ransel_x99_trampoline"} */
+/* MIPS_AUTO_HOOK: {"id":"ransel-x99-run-action","type":"hook","site_symbol":"player_run_action","trampoline_symbol":"ransel_x99_run_trampoline"} */
 s32 mod_ransel_x99_run_action(void)
 {
     return 0;
