@@ -41,7 +41,8 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/src
           -v "$RUNNER_TEMP/original-disc":/disc:ro -w /src hmbtn-build
           bash -c 'cmake -S . -B build -G Ninja -DORIGINAL_DISC=/disc/disc.bin &&
-          cmake --build build --target disc'
+          cmake --build build --target program &&
+          cmake --build build --target mips-integrate-11_GF_FARM'
 
       - name: Install rclone and zip
         if: github.event_name == 'workflow_dispatch'
@@ -161,4 +162,3 @@ jobs:
             echo "The ZIP is stored in the configured Google Drive folder."
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::notice title=Google Drive download::The download link is available in the workflow summary."
-          
