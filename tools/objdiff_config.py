@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # The modded player replaces the original player translation unit.
 PLAYER_ORIGINAL = Path("overlay/11_GF_FARM/people/player.c")
-PLAYER_MOD = Path("overlay/11_GF_FARM/mod/player_mod.c")
+PLAYER_MOD = Path("overlay/11_GF_FARM/mod/ransel_x99/player_mod.c")
 PLAYER_UNIT = Path("overlay/11_GF_FARM/people/player")
 
 
