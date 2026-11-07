@@ -1214,6 +1214,65 @@ static void player_calc_first_valid(FarmPlayer *player)
     player->facing38 = saved_index;
 }
 
+static void player_rucksack_stack_item(FarmPlayer *player)
+{
+    FarmStoredItem *held;
+    FarmStoredItem *slot;
+    s32 remaining;
+    s32 capacity;
+    s32 amount;
+    s32 i;
+
+    held = &player->held[HELD_ITEM];
+    remaining = held->count;
+
+    if (held->id == 0 || remaining <= 0)
+    {
+        return;
+    }
+
+    /* Gabungkan dengan tumpukan item ber-ID sama. */
+    for (i = 0; i < player->itemSlots && remaining > 0; i++)
+    {
+        slot = &player->items[i];
+
+        if (slot->id == held->id && slot->count < 99)
+        {
+            capacity = 99 - slot->count;
+            amount = remaining < capacity ? remaining : capacity;
+
+            slot->count += amount;
+            remaining -= amount;
+        }
+    }
+
+    /* Masukkan ke slot kosong jika masih ada sisa. */
+    for (i = 0; i < player->itemSlots && remaining > 0; i++)
+    {
+        slot = &player->items[i];
+
+        if (slot->id == 0)
+        {
+            amount = remaining > 99 ? 99 : remaining;
+
+            stored_item_copy(slot, held);
+            slot->count = amount;
+            remaining -= amount;
+        }
+    }
+
+    if (remaining == 0)
+    {
+        stored_item_clear(held);
+        player_compact_items();
+    }
+    else
+    {
+        held->count = remaining;
+    }
+    }
+
+
 static u16 rucksack_item_slots[4] = {2, 4, 8, 0};
 
 static s32 anim_wait_frames[3] = {
@@ -1625,64 +1684,6 @@ static s32 player_run_action(FarmPlayer *player)
         player_reset_pose();
         return 0;
 
-    static void player_rucksack_stack_item(FarmPlayer *player)
-{
-    FarmStoredItem *held;
-    FarmStoredItem *slot;
-    s32 remaining;
-    s32 capacity;
-    s32 amount;
-    s32 i;
-
-    held = &player->held[HELD_ITEM];
-    remaining = held->count;
-
-    if (held->id == 0 || remaining <= 0)
-    {
-        return;
-    }
-
-    /* Gabungkan dengan tumpukan item ber-ID sama. */
-    for (i = 0; i < player->itemSlots && remaining > 0; i++)
-    {
-        slot = &player->items[i];
-
-        if (slot->id == held->id && slot->count < 99)
-        {
-            capacity = 99 - slot->count;
-            amount = remaining < capacity ? remaining : capacity;
-
-            slot->count += amount;
-            remaining -= amount;
-        }
-    }
-
-    /* Masukkan ke slot kosong jika masih ada sisa. */
-    for (i = 0; i < player->itemSlots && remaining > 0; i++)
-    {
-        slot = &player->items[i];
-
-        if (slot->id == 0)
-        {
-            amount = remaining > 99 ? 99 : remaining;
-
-            stored_item_copy(slot, held);
-            slot->count = amount;
-            remaining -= amount;
-        }
-    }
-
-    if (remaining == 0)
-    {
-        stored_item_clear(held);
-        player_compact_items();
-    }
-    else
-    {
-        held->count = remaining;
-    }
-    }
-        
     case PLAYER_MODE_STORE_ITEM:
     if (!item_is_print(player->held[HELD_ITEM].id))
     {
