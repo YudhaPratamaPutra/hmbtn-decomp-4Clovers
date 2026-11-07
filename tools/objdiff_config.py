@@ -17,6 +17,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# The modded player replaces the original player translation unit.
+PLAYER_ORIGINAL = Path("overlay/11_GF_FARM/people/player.c")
+PLAYER_MOD = Path("overlay/11_GF_FARM/mod/player_mod.c")
+PLAYER_UNIT = Path("overlay/11_GF_FARM/people/player")
+
 
 def image_of(source):
     """The image a source file belongs to: `main` for the EXE, else the overlay's name."""
@@ -26,11 +31,22 @@ def image_of(source):
 
 def main():
     build = Path(sys.argv[1])
-    sources = sorted(p for p in (ROOT / "src").rglob("*.c"))
+    sources = sorted(
+        p for p in (ROOT / "src").rglob("*.c")
+        if p.relative_to(ROOT / "src") != PLAYER_ORIGINAL
+    )
     units, images = [], []
     for source in sources:
-        relative = source.relative_to(ROOT / "src").with_suffix("")
-        obj = (build / "src" / relative).with_suffix(".o").as_posix()
+        source_relative = source.relative_to(ROOT / "src")
+        relative = source_relative.with_suffix("")
+
+        # Keep the original player unit identity for objdiff while using the
+        # object compiled from mod/player_mod.c.
+        if source_relative == PLAYER_MOD:
+            relative = PLAYER_UNIT
+
+        obj_relative = source_relative.with_suffix("")
+        obj = (build / "src" / obj_relative).with_suffix(".o").as_posix()
         image = image_of(source)
         if image not in images:
             images.append(image)
