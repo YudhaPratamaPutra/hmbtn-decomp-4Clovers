@@ -1214,7 +1214,7 @@ static void player_calc_first_valid(FarmPlayer *player)
     player->facing38 = saved_index;
 }
 
-static void player_rucksack_stack_item(FarmPlayer *player)
+static s32 player_rucksack_stack_item(FarmPlayer *player)
 {
     FarmStoredItem *held;
     FarmStoredItem *slot;
@@ -1224,37 +1224,50 @@ static void player_rucksack_stack_item(FarmPlayer *player)
     s32 i;
 
     held = &player->held[HELD_ITEM];
-    remaining = held->count;
-
-    if (held->id == 0 || remaining <= 0)
+    if (held->id == 0)
     {
-        return;
+        return 1;
     }
 
-    /* Gabungkan dengan tumpukan item ber-ID sama. */
+    remaining = held->count;
+
+    /* Preserve zero-count records as individual items instead of merging them. */
+    if (remaining <= 0)
+    {
+        for (i = 0; i < player->itemSlots; i++)
+        {
+            slot = &player->items[i];
+            if (slot->id == 0)
+            {
+                stored_item_copy(slot, held);
+                stored_item_clear(held);
+                player_compact_items();
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    /* Fill existing stacks of the same item first. */
     for (i = 0; i < player->itemSlots && remaining > 0; i++)
     {
         slot = &player->items[i];
-
         if (slot->id == held->id && slot->count < 99)
         {
             capacity = 99 - slot->count;
             amount = remaining < capacity ? remaining : capacity;
-
             slot->count += amount;
             remaining -= amount;
         }
     }
 
-    /* Masukkan ke slot kosong jika masih ada sisa. */
+    /* Put any remainder into empty rucksack slots. */
     for (i = 0; i < player->itemSlots && remaining > 0; i++)
     {
         slot = &player->items[i];
-
         if (slot->id == 0)
         {
             amount = remaining > 99 ? 99 : remaining;
-
             stored_item_copy(slot, held);
             slot->count = amount;
             remaining -= amount;
@@ -1265,12 +1278,12 @@ static void player_rucksack_stack_item(FarmPlayer *player)
     {
         stored_item_clear(held);
         player_compact_items();
+        return 1;
     }
-    else
-    {
-        held->count = remaining;
-    }
-    }
+
+    held->count = remaining;
+    return 0;
+}
 
 
 static u16 rucksack_item_slots[4] = {2, 4, 8, 0};
@@ -1685,19 +1698,21 @@ static s32 player_run_action(FarmPlayer *player)
         return 0;
 
     case PLAYER_MODE_STORE_ITEM:
-    if (!item_is_print(player->held[HELD_ITEM].id))
-    {
-        player_rucksack_stack_item(player);
-    }
-    else
-    {
-        picture_release_item(player->held[HELD_ITEM].id);
-        stored_item_clear(&player->held[HELD_ITEM]);
-    }
-
-    player->stateFlags &= ~PLAYER_FLAG_CARRY_ITEM;
-    player_reset_pose();
-    return 0;
+        if (!item_is_print(player->held[HELD_ITEM].id))
+        {
+            if (player_rucksack_stack_item(player))
+            {
+                player->stateFlags &= ~PLAYER_FLAG_CARRY_ITEM;
+            }
+        }
+        else
+        {
+            picture_release_item(player->held[HELD_ITEM].id);
+            stored_item_clear(&player->held[HELD_ITEM]);
+            player->stateFlags &= ~PLAYER_FLAG_CARRY_ITEM;
+        }
+        player_reset_pose();
+        return 0;
     
     case PLAYER_MODE_0D:
         player->stateFlags |= PLAYER_FLAG_CARRY_ITEM;
@@ -4844,7 +4859,8 @@ static void player_carry_tick(void)
         slot = &player->items[i];
 
         if (slot->id == 0 ||
-            (slot->id == player->held[HELD_ITEM].id &&
+            (player->held[HELD_ITEM].count > 0 &&
+             slot->id == player->held[HELD_ITEM].id &&
              slot->count < 99))
         {
             can_store = 1;
