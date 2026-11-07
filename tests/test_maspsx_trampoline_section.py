@@ -23,7 +23,7 @@ class TrampolineSectionTests(unittest.TestCase):
         self.assertLess(end, bss)
 
     def test_trampoline_macro_reserves_four_words_in_named_section(self):
-        header = Path("src/include/mips_auto_hook.h").read_text(
+        header = Path("src/overlay/11_GF_FARM/mod/mips_auto_hook.h").read_text(
             encoding="utf-8"
         )
         self.assertIn('section(".mips_trampoline.11_GF_FARM")', header)

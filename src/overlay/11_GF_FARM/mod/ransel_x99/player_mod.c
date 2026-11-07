@@ -71,7 +71,6 @@
  * linker-owned .mips_trampoline.11_GF_FARM section. Never shared between
  * hooks: the integrator rejects overlapping trampoline ranges. */
 MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_frame_trampoline);
-MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_run_trampoline);
 
 
 
@@ -98,8 +97,10 @@ s32 mod_ransel_x99_frame_update(void)
 }
 
 /* Hook 2: player_run_action - dipanggil saat aksi player dijalankan
- * Saat ini hanya lolos ke kode asli (no-op), aman untuk dipelajari nanti. */
-/* MIPS_AUTO_HOOK: {"id":"ransel-x99-run-action","type":"hook","site_symbol":"player_run_action","trampoline_symbol":"ransel_x99_run_trampoline"} */
+ * Sengaja tidak diregistrasi: site_symbol tidak masuk linker map (fungsi
+ * static tidak diterbitkan ld sebagai simbol map), dan entry-hook berarti
+ * menggantikan isi player_run_action. Aktifkan lagi hanya jika mod
+ * memanggil trampoline untuk menjalankan kode aslinya. */
 s32 mod_ransel_x99_run_action(void)
 {
     return 0;
