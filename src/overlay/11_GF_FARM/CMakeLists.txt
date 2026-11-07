@@ -9,6 +9,7 @@ psx_overlay(11_GF_FARM FILE 11_GF_FARM.bin REGION low OWN_COMMONS
         world/clock.c
         farm_frame.c
         people/villager.c
+        people/player.c
         demo.c
         animals/animals.c
         animals/animal_actions.c
