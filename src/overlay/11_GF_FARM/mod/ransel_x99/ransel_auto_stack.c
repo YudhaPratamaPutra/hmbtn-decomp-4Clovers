@@ -33,8 +33,6 @@
  * Jangan diganti atau dibagi antar hook. */
 MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_frame_trampoline);
 
-static void ransel_compact_table(FarmStoredItem *table, s32 count);
-
 /* Geser semua entri terisi ke depan tabel supaya tidak ada lubang di tengah. */
 static s32 ransel_compact_table(FarmStoredItem *table, s32 count)
 {
