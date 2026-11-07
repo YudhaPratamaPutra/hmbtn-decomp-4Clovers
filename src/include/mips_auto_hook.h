@@ -3,24 +3,22 @@
 
 #include "types.h"
 
-/*
- * Declares a 16-byte (4-word) trampoline storage buffer.
+/* Declares a 16-byte (4-word) trampoline storage buffer.
  *
  * The hook-register tool resolves this symbol from the linker map,
  * derives its file offset from the explicit image base, reads the
  * 16-byte trampoline guard, and writes the displaced-instruction
  * trampoline there.
  *
- * Usage (placed at file scope, typically near the top of the mod source):
+ * Usage:
  *
  *     #include "mips_auto_hook.h"
  *     MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_trampoline);
  *
- * Then declare a hook immediately above a function definition:
+ * Then declare a hook above a function definition:
  *
- *     /* MIPS_AUTO_HOOK: {"id":"my-hook","type":"hook",
- *      *   "site_symbol":"farm_some_function",
- *      *   "trampoline_symbol":"ransel_x99_trampoline"} */
+ *     MIPS_AUTO_HOOK_DECL({"id":"my-hook","type":"hook",
+ *   "site_symbol":"farm_some_function","trampoline_symbol":"ransel_x99_trampoline"})
  *     s32 mod_my_hook(...) { ... }
  */
 #define MIPS_AUTO_HOOK_TRAMPOLINE(sym) \
