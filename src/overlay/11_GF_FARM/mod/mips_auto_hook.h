@@ -1,5 +1,7 @@
 #ifndef MIPS_AUTO_HOOK_H
 #define MIPS_AUTO_HOOK_H
+
+#include "types.h"
   
 /*
  * Reserve one 16-byte trampoline slot in the overlay's linker-owned section.
