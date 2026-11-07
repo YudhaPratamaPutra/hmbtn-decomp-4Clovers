@@ -67,25 +67,17 @@
 #include "weather.h"
 #include "mips_auto_hook.h"
 
-/* Trampoline storages: one 16-byte slot per hook, reserved in the
- * linker-owned .mips_trampoline.11_GF_FARM section. Never shared between
- * hooks: the integrator rejects overlapping trampoline ranges. */
-MIPS_AUTO_HOOK_TRAMPOLINE(ransel_x99_frame_trampoline);
-
-
-
 /* =====================================================================
- * MIPS AUTO HOOK DECLARATIONS - Ransel X99 Mod
- * 
- * Hook ini diletakkan di atas fungsi mod. Auto-integrator akan membaca
- * deklarasi ini dan membuat patch MIPS ke fungsi asli game.
- * Jangan hapus atau ubah trampoline di atas.
+ * Ransel X99 Mod - RANSACK auto-stack helper
+ * =====================================================================
+ * Versi awal mod memakai MIPS_AUTO_HOOK (entry-hook biner) untuk
+ * memanggil logika ini setiap frame. Entry-hook menggantikan isi fungsi
+ * target (body asli tidak jalan), sehingga state per-frame farm macet
+ * di "Now Loading". Karena player_mod.c ini adalah pengganti penuh
+ * player.c, pemanggilan dilakukan langsung dari dalam body
+ * player_frame_update(), tanpa patch biner.
  * ===================================================================== */
 
-/* Hook 1: player_frame_update - dipanggil setiap frame
- * Fungsi mod akan mengecek apakah player sedang membawa item,
- * jika iya maka coba simpan ke rucksack. */
-/* MIPS_AUTO_HOOK: {"id":"ransel-x99-frame-update","type":"hook","site_symbol":"player_frame_update","trampoline_symbol":"ransel_x99_frame_trampoline"} */
 s32 mod_ransel_x99_frame_update(void)
 {
     FarmPlayer *player = &game_state.player;
@@ -233,6 +225,7 @@ static void player_update_controller_flags(void);
 static void player_build_result(FarmPlayer *player);
 static void player_result_params_init(s32 kind, s16 status, s32 originX, s32 originY, s16 mode, s32 steps);
 static s32 player_run_action(FarmPlayer *player);
+static s32 player_rucksack_stack_item(FarmPlayer *player);
 static void player_entry_refresh(FarmPlayer *player);
 static s32 player_anim_advance(FarmPlayer *player);
 static s32 player_start_heavy_carry(FarmPlayer *player);
@@ -496,6 +489,11 @@ void player_frame_update(void)
     if (player->stateFlags & PLAYER_FLAG_SCENE_CHANGE)
     {
         return;
+    }
+    /* Ransel X99: saat membawa item, cobakan menumpuknya ke rucksack. */
+    if (player->stateFlags & PLAYER_FLAG_CARRY_ITEM)
+    {
+        player_rucksack_stack_item(player);
     }
     if (scene_place_mismatch(&player->place.value) != 0)
     {
