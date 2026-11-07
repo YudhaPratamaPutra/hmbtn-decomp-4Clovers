@@ -1,3 +1,5 @@
+#include "Ransel_X99.h"
+
 static void player_rucksack_stack_item(FarmPlayer *player)
 {
     FarmStoredItem *held;
