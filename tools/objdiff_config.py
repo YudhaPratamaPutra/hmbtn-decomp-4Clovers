@@ -28,15 +28,9 @@ def main():
     build = Path(sys.argv[1])
     # Mod-owned replacement translation units retain their original logical
     # names in progress reporting; excluded originals must not produce units.
-    rucksack_original = ROOT / "src/overlay/11_GF_FARM/menu/storage_swap.c"
-    rucksack_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/ransel_mod.c"
-    player_original = ROOT / "src/overlay/11_GF_FARM/people/player.c"
-    player_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/player_mod.c"
-    farm_frame_original = ROOT / "src/overlay/11_GF_FARM/farm_frame.c"
-    farm_frame_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/farm_frame_mod.c"
-    animals_original = ROOT / "src/overlay/11_GF_FARM/animals/animals.c"
-    animals_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/animals_mod.c"
-
+    player_original = ROOT / "src/overlay/11_GF_FARM/people/player.c")
+    player_mod = ROOT / "src/overlay/11_GF_FARM/mod/ransel_x99/player_mod.c")
+    
     excluded_sources = {
         rucksack_original,
         player_original,
