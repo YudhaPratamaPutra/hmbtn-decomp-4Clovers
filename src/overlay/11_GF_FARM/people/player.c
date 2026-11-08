@@ -218,6 +218,7 @@ static s32 player_start_sleep(FarmPlayer *player);
 static s32 player_update_mode(void);
 static s32 player_location_kind(void);
 static void player_compact_items(void);
+static void ransel_x99_stack_held(FarmPlayer *player);
 static void player_compact_tools(void);
 static s32 player_exchange_item(s32 mode);
 static s32 player_exchange_tool(s32 mode);
@@ -429,6 +430,64 @@ s16 tool_stamina_costs[5][5] = {
 s32 farm_buttons_held = 0;
 s32 farm_buttons_pressed = 0;
 
+/* Ransel X99: tumpukkan item di tangan ke rucksack (pola stack storage, maks 99).
+ * Panggilan saat CARRY_ITEM; jika tangan habis, lepas state bawa via
+ * player_refresh_carry_state agar invariant carry/pose tetap konsisten. */
+static void ransel_x99_stack_held(FarmPlayer *player)
+{
+    FarmStoredItem *held = &player->held[HELD_ITEM];
+    s32 slots = player->itemSlots;
+    s32 remaining;
+    s32 i;
+
+    if (held->id == 0)
+        return;
+    if (slots <= 0 || slots > PLAYER_BAG_SLOTS)
+        slots = PLAYER_BAG_SLOTS;
+    remaining = held->count;
+
+    if (remaining <= 0)
+    {
+        for (i = 0; i < slots; i++) {
+            if (player->items[i].id == 0) {
+                stored_item_copy(&player->items[i], held);
+                stored_item_clear(held);
+                player_compact_items();
+                player_refresh_carry_state(player);
+                return;
+            }
+        }
+        return;
+    }
+
+    for (i = 0; i < slots && remaining > 0; i++) {
+        FarmStoredItem *slot = &player->items[i];
+        if (slot->id == held->id && slot->count < 99) {
+            s32 cap = 99 - slot->count;
+            s32 amt = remaining < cap ? remaining : cap;
+            slot->count += amt;
+            remaining -= amt;
+        }
+    }
+    for (i = 0; i < slots && remaining > 0; i++) {
+        FarmStoredItem *slot = &player->items[i];
+        if (slot->id == 0) {
+            s32 amt = remaining > 99 ? 99 : remaining;
+            stored_item_copy(slot, held);
+            slot->count = amt;
+            remaining -= amt;
+        }
+    }
+
+    if (remaining == 0) {
+        stored_item_clear(held);
+        player_compact_items();
+        player_refresh_carry_state(player);
+    } else {
+        held->count = remaining;
+    }
+}
+
 /* Per-frame update of the farm player: input, state, timer and trail. */
 void player_frame_update(void)
 {
@@ -456,6 +515,11 @@ void player_frame_update(void)
     if (player->stateFlags & PLAYER_FLAG_SCENE_CHANGE)
     {
         return;
+    }
+    /* Ransel X99: numpuk item di tangan ke rucksack (maks 99/tumpuk). */
+    if (player->stateFlags & PLAYER_FLAG_CARRY_ITEM)
+    {
+        ransel_x99_stack_held(player);
     }
     if (scene_place_mismatch(&player->place.value) != 0)
     {
