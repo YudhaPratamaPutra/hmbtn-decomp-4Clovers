@@ -17,11 +17,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# The modded player replaces the original player translation unit.
-PLAYER_ORIGINAL = Path("overlay/11_GF_FARM/people/player.c")
-PLAYER_MOD = Path("overlay/11_GF_FARM/mod/ransel_x99/player_mod.c")
-PLAYER_UNIT = Path("overlay/11_GF_FARM/people/player")
-
 
 def image_of(source):
     """The image a source file belongs to: `main` for the EXE, else the overlay's name."""
@@ -31,27 +26,46 @@ def image_of(source):
 
 def main():
     build = Path(sys.argv[1])
+    # Mod-owned replacement translation units retain their original logical
+    # names in progress reporting; excluded originals must not produce units.
+    rucksack_original = ROOT / "src/overlay/11_GF_FARM/menu/storage_swap.c"
+    rucksack_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/ransel_mod.c"
+    player_original = ROOT / "src/overlay/11_GF_FARM/people/player.c"
+    player_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/player_mod.c"
+    farm_frame_original = ROOT / "src/overlay/11_GF_FARM/farm_frame.c"
+    farm_frame_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/farm_frame_mod.c"
+    animals_original = ROOT / "src/overlay/11_GF_FARM/animals/animals.c"
+    animals_mod = ROOT / "src/overlay/11_GF_FARM/Modifikasi/animals_mod.c"
+
+    excluded_sources = {
+        rucksack_original,
+        player_original,
+        farm_frame_original,
+        animals_original,
+    }
+    replacement_units = {
+        rucksack_mod: "overlay/11_GF_FARM/menu/storage_swap",
+        player_mod: "overlay/11_GF_FARM/people/player",
+        farm_frame_mod: "overlay/11_GF_FARM/farm_frame",
+        animals_mod: "overlay/11_GF_FARM/animals/animals",
+    }
+
     sources = sorted(
         p for p in (ROOT / "src").rglob("*.c")
-        if p.relative_to(ROOT / "src") != PLAYER_ORIGINAL
+        if p not in excluded_sources
     )
     units, images = [], []
     for source in sources:
-        source_relative = source.relative_to(ROOT / "src")
-        relative = source_relative.with_suffix("")
-
-        # Keep the original player unit identity for objdiff while using the
-        # object compiled from mod/player_mod.c.
-        if source_relative == PLAYER_MOD:
-            relative = PLAYER_UNIT
-
-        obj_relative = source_relative.with_suffix("")
-        obj = (build / "src" / obj_relative).with_suffix(".o").as_posix()
+        relative = source.relative_to(ROOT / "src").with_suffix("")
+        unit_name = relative.as_posix()
+        if source in replacement_units:
+            unit_name = replacement_units[source]
+        obj = (build / "src" / relative).with_suffix(".o").as_posix()
         image = image_of(source)
         if image not in images:
             images.append(image)
         units.append({
-            "name": relative.as_posix(),
+            "name": unit_name,
             "target_path": obj,
             "base_path": obj,
             "metadata": {
